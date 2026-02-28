@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMPOSTER — Spy Word Game</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Bebas Neue (display) + JetBrains Mono (body/code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Socket.io client (served by our own server at runtime) -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    /* ── CSS Variables ─────────────────────────────────────────────────── */
+    :root {
+      --bg:        #080b10;
+      --surface:   #0e1420;
+      --surface2:  #151d2e;
+      --border:    #1e2d45;
+      --amber:     #f5a623;
+      --amber-dim: #9a6710;
+      --cyan:      #00e5ff;
+      --cyan-dim:  #006070;
+      --red:       #ff3b5c;
+      --green:     #00e87e;
+      --text:      #c8d8f0;
+      --text-dim:  #4a607a;
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Grid Background ───────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Ambient Glow ──────────────────────────────────────────────────── */
+    body::after {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(245,166,35,0.07) 0%, transparent 70%);
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── App wrapper ───────────────────────────────────────────────────── */
+    #app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* ── Screens ───────────────────────────────────────────────────────── */
+    .screen { display: none; width: 100%; max-width: 480px; }
+    .screen.active { display: block; animation: screenIn 0.4s ease forwards; }
+
+    @keyframes screenIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Logo / Header ─────────────────────────────────────────────────── */
+    .logo {
+      font-family: var(--font-display);
+      font-size: clamp(64px, 16vw, 96px);
+      letter-spacing: 6px;
+      line-height: 0.9;
+      color: var(--amber);
+      text-shadow: 0 0 40px rgba(245,166,35,0.4);
+    }
+    .logo-sub {
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* ── Card ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 28px;
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+      border-radius: 4px 4px 0 0;
+    }
+
+    /* ── Section title ─────────────────────────────────────────────────── */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 3px;
+      color: var(--cyan);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Input ─────────────────────────────────────────────────────────── */
+    .inp {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px rgba(245,166,35,0.12);
+    }
+    .inp::placeholder { color: var(--text-dim); }
+    .inp.uppercase { text-transform: uppercase; letter-spacing: 4px; }
+
+    label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      letter-spacing: 3px;
+      font-size: 18px;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      width: 100%;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-amber {
+      background: var(--amber);
+      color: #000;
+      box-shadow: 0 4px 24px rgba(245,166,35,0.3);
+    }
+    .btn-amber:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(245,166,35,0.55); }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
+
+    .btn-cyan {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 4px 24px rgba(0,229,255,0.25);
+    }
+    .btn-cyan:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(0,229,255,0.5); }
+
+    .btn-red {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(255,59,92,0.25);
+    }
+    .btn-red:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(255,59,92,0.5); }
+
+    .btn-green {
+      background: var(--green);
+      color: #000;
+      box-shadow: 0 4px 24px rgba(0,232,126,0.25);
+    }
+    .btn-green:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(0,232,126,0.5); }
+
+    .btn-sm {
+      font-size: 13px;
+      letter-spacing: 2px;
+      padding: 9px 18px;
+    }
+
+    /* ── Room code badge ───────────────────────────────────────────────── */
+    .room-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 8px 14px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+    }
+    .room-badge span {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 6px;
+      color: var(--amber);
+    }
+
+    /* ── Player list ───────────────────────────────────────────────────── */
+    .player-list { display: flex; flex-direction: column; gap: 8px; }
+    .player-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+      animation: slideIn 0.3s ease forwards;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .player-item.speaker {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 1px var(--cyan), 0 4px 20px rgba(0,229,255,0.15);
+    }
+    .player-avatar {
+      width: 34px; height: 34px;
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px;
+      background: var(--border);
+      color: var(--amber);
+      flex-shrink: 0;
+    }
+    .player-name { font-size: 13px; font-weight: 500; flex: 1; }
+    .player-badge {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      border-radius: 2px;
+    }
+    .badge-host    { background: rgba(245,166,35,0.15); color: var(--amber); border: 1px solid var(--amber-dim); }
+    .badge-you     { background: rgba(0,229,255,0.1); color: var(--cyan); border: 1px solid var(--cyan-dim); }
+    .badge-speaker { background: rgba(0,229,255,0.2); color: var(--cyan); border: 1px solid var(--cyan); }
+
+    /* ── Role card ─────────────────────────────────────────────────────── */
+    .role-card {
+      text-align: center;
+      border-radius: 4px;
+      padding: 32px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .role-card.player-card {
+      background: linear-gradient(135deg, #0a1a0e, #0e2016);
+      border: 1px solid #1a3d22;
+    }
+    .role-card.imposter-card {
+      background: linear-gradient(135deg, #1a060a, #200e10);
+      border: 1px solid #4a1020;
+    }
+    .role-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 60%);
+    }
+    .role-label {
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 5px;
+      margin-bottom: 8px;
+    }
+    .role-name {
+      font-family: var(--font-display);
+      font-size: 52px;
+      letter-spacing: 4px;
+      line-height: 1;
+    }
+    .role-card.player-card .role-name { color: var(--green); text-shadow: 0 0 30px rgba(0,232,126,0.4); }
+    .role-card.imposter-card .role-name { color: var(--red); text-shadow: 0 0 30px rgba(255,59,92,0.4); }
+    .role-divider {
+      width: 40px; height: 2px;
+      margin: 16px auto;
+    }
+    .player-card .role-divider { background: var(--green); }
+    .imposter-card .role-divider { background: var(--red); }
+    .role-instruction {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .secret-word {
+      font-family: var(--font-display);
+      font-size: 40px;
+      letter-spacing: 4px;
+      color: var(--amber);
+      text-shadow: 0 0 20px rgba(245,166,35,0.5);
+    }
+    .secret-hint {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* ── Speaker announcement banner ───────────────────────────────────── */
+    .speaker-banner {
+      text-align: center;
+      padding: 16px;
+      border-radius: 3px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid var(--cyan-dim);
+      animation: pulse 1.5s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.2); }
+      50%       { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+    }
+    .speaker-banner .speaker-icon { font-size: 24px; margin-bottom: 4px; }
+    .speaker-banner .speaker-label {
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .speaker-banner .speaker-name {
+      font-family: var(--font-display);
+      font-size: 32px;
+      letter-spacing: 3px;
+      color: var(--cyan);
+    }
+
+    /* ── Reveal card ───────────────────────────────────────────────────── */
+    .reveal-imposter {
+      text-align: center;
+      background: linear-gradient(135deg, #1a060a, #200e10);
+      border: 1px solid #ff3b5c44;
+      border-radius: 4px;
+      padding: 28px 20px;
+    }
+    .reveal-imposter .ri-label {
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .reveal-imposter .ri-name {
+      font-family: var(--font-display);
+      font-size: 48px;
+      letter-spacing: 4px;
+      color: var(--red);
+      text-shadow: 0 0 30px rgba(255,59,92,0.5);
+    }
+    .word-reveal {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 16px;
+      text-align: center;
+    }
+    .word-reveal .wr-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .word-reveal .wr-value {
+      font-family: var(--font-display);
+      font-size: 32px;
+      letter-spacing: 4px;
+      color: var(--amber);
+    }
+
+    /* ── Error msg ─────────────────────────────────────────────────────── */
+    .error-msg {
+      font-size: 12px;
+      color: var(--red);
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    /* ── Divider ───────────────────────────────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Utility ───────────────────────────────────────────────────────── */
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .gap-5 { gap: 20px; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbar ─────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SCREEN 1: LANDING
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="screen active" id="screen-landing">
+    <div style="text-align:center;margin-bottom:40px;">
+      <div class="logo">IMPOSTER</div>
+      <div class="logo-sub">// multiplayer spy word game</div>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:16px;">
+      <!-- Create Room -->
+      <div>
+        <div class="section-title">Create</div>
+        <div style="margin-bottom:12px;">
+          <label>Your Nickname</label>
+          <input id="create-nickname" class="inp" type="text" placeholder="Enter your name..." maxlength="16" autocomplete="off" />
+        </div>
+        <button class="btn btn-amber" id="btn-create">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Create Room
+        </button>
+        <div class="error-msg" id="create-error"></div>
+      </div>
+
+      <div class="divider">OR</div>
+
+      <!-- Join Room -->
+      <div>
+        <div class="section-title">Join</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+          <div>
+            <label>Your Nickname</label>
+            <input id="join-nickname" class="inp" type="text" placeholder="Enter your name..." maxlength="16" autocomplete="off" />
+          </div>
+          <div>
+            <label>Room Code</label>
+            <input id="join-code" class="inp uppercase" type="text" placeholder="ABCD" maxlength="4" autocomplete="off" />
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="btn-join">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Join Room
+        </button>
+        <div class="error-msg" id="join-error"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SCREEN 2: LOBBY
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-lobby">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div class="logo" style="font-size:42px;letter-spacing:4px;">IMPOSTER</div>
+        <div class="logo-sub">LOBBY</div>
+      </div>
+      <div class="room-badge">
+        ROOM&nbsp;<span id="lobby-code">----</span>
+        <button onclick="copyRoomCode()" title="Copy code" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:2px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title">Players</div>
+      <div class="player-list" id="lobby-players"></div>
+      <div style="margin-top:14px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">
+        Waiting for host to start — share the room code with friends
+      </div>
+    </div>
+
+    <!-- Host-only start button -->
+    <div id="host-start-area" style="display:none;">
+      <button class="btn btn-amber" id="btn-start">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Game
+      </button>
+      <div class="error-msg" id="start-error"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SCREEN 3: GAME
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-game">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="logo" style="font-size:36px;letter-spacing:3px;">IMPOSTER</div>
+        <div class="logo-sub">GAME IN PROGRESS</div>
+      </div>
+      <div class="room-badge">
+        ROOM&nbsp;<span id="game-code">----</span>
+      </div>
+    </div>
+
+    <!-- Role card -->
+    <div id="role-card-container" style="margin-bottom:16px;"></div>
+
+    <!-- Speaker banner -->
+    <div id="speaker-area" style="margin-bottom:16px;display:none;">
+      <div class="speaker-banner">
+        <div class="speaker-icon">🎙️</div>
+        <div class="speaker-label">Now speaking</div>
+        <div class="speaker-name" id="speaker-name-display">—</div>
+      </div>
+    </div>
+
+    <!-- Player list during game -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title">Players</div>
+      <div class="player-list" id="game-players"></div>
+    </div>
+
+    <!-- Host controls -->
+    <div id="host-game-controls" style="display:none;display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-cyan" id="btn-next-speaker">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
+        Next Speaker
+      </button>
+      <button class="btn btn-red btn-sm" id="btn-reveal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Reveal Imposter
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SCREEN 4: REVEAL
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-reveal">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div class="logo" style="color:var(--red);text-shadow:0 0 40px rgba(255,59,92,0.5);">REVEALED</div>
+      <div class="logo-sub">// the imposter has been exposed</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title" style="color:var(--red);">The Imposter Was</div>
+      <div class="reveal-imposter" style="margin-bottom:16px;">
+        <div class="ri-label">Agent Identified</div>
+        <div class="ri-name" id="reveal-imposter-name">—</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="word-reveal">
+          <div class="wr-label">Secret Word</div>
+          <div class="wr-value" id="reveal-word">—</div>
+        </div>
+        <div class="word-reveal">
+          <div class="wr-label">Imposter's Hint</div>
+          <div class="wr-value" style="font-size:14px;font-family:var(--font-mono);color:var(--text);padding-top:4px;" id="reveal-hint">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="host-reveal-controls" style="display:none;">
+      <button class="btn btn-green" id="btn-play-again">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
+        Play Again
+      </button>
+    </div>
+    <div id="reveal-waiting" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:2px;padding:12px;">
+      Waiting for host to start a new round...
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- =====================================================================
+     JAVASCRIPT
+===================================================================== -->
+<script>
+/* ── State ─────────────────────────────────────────────────────────────── */
+const state = {
+  socket: null,
+  nickname: '',
+  roomCode: '',
+  isHost: false,
+  myId: '',
+  players: [],    // [{id, nickname}]
+  speakerIndex: -1,
+  myRole: null,   // 'player' | 'imposter'
+  mySecret: '',
+};
+
+/* ── Utility: show a screen ─────────────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ── Utility: set error text ─────────────────────────────────────────────── */
+function setError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg;
+}
+
+/* ── Utility: avatar initials ─────────────────────────────────────────────── */
+function avatarLetter(name) {
+  return (name || '?')[0].toUpperCase();
+}
+
+/* ── Copy room code ─────────────────────────────────────────────────────── */
+function copyRoomCode() {
+  navigator.clipboard?.writeText(state.roomCode).catch(() => {});
+}
+
+/* ── Build player list HTML ─────────────────────────────────────────────── */
+function buildPlayerList(containerId, players, hostId, speakerIndex) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  players.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'player-item' + (i === speakerIndex ? ' speaker' : '');
+
+    const badges = [];
+    if (p.id === hostId)      badges.push(`<span class="player-badge badge-host">HOST</span>`);
+    if (p.id === state.myId)  badges.push(`<span class="player-badge badge-you">YOU</span>`);
+    if (i === speakerIndex)   badges.push(`<span class="player-badge badge-speaker">🎙 SPEAKING</span>`);
+
+    item.innerHTML = `
+      <div class="player-avatar">${avatarLetter(p.nickname)}</div>
+      <div class="player-name">${escHtml(p.nickname)}</div>
+      ${badges.join('')}
+    `;
+    container.appendChild(item);
+  });
+}
+
+/* ── Build role card HTML ─────────────────────────────────────────────── */
+function buildRoleCard(role, secret) {
+  const container = document.getElementById('role-card-container');
+  if (role === 'player') {
+    container.innerHTML = `
+      <div class="role-card player-card">
+        <div class="role-label" style="color:var(--green);">Your Role</div>
+        <div class="role-name">CREW</div>
+        <div class="role-divider"></div>
+        <div class="role-instruction">Your secret word is</div>
+        <div class="secret-word">${escHtml(secret)}</div>
+        <div style="margin-top:12px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">
+          Do not reveal your word. Find the imposter.
+        </div>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="role-card imposter-card">
+        <div class="role-label" style="color:var(--red);">Your Role</div>
+        <div class="role-name">IMPOSTER</div>
+        <div class="role-divider"></div>
+        <div class="role-instruction">Your hint is</div>
+        <div class="secret-hint">"${escHtml(secret)}"</div>
+        <div style="margin-top:12px;font-size:11px;color:rgba(255,59,92,0.7);letter-spacing:1px;">
+          Blend in. Don't get caught.
+        </div>
+      </div>
+    `;
+  }
+}
+
+/* ── Escape HTML ─────────────────────────────────────────────────────────── */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Init Socket.io ─────────────────────────────────────────────────────── */
+function initSocket() {
+  if (state.socket) return;
+
+  state.socket = io();
+  const socket = state.socket;
+
+  // Store our socket id once connected
+  socket.on('connect', () => {
+    state.myId = socket.id;
+  });
+
+  /* ── Lobby update ─────────────────────────────────────────────── */
+  socket.on('lobby:update', ({ players, hostId }) => {
+    state.players = players;
+    state.isHost = (hostId === state.myId);
+
+    // Update lobby screen
+    buildPlayerList('lobby-players', players, hostId, -1);
+    document.getElementById('host-start-area').style.display = state.isHost ? 'block' : 'none';
+  });
+
+  /* ── Game started — receive role assignment ───────────────────── */
+  socket.on('game:started', ({ role, secret, players, hostId, speakerIndex }) => {
+    state.myRole = role;
+    state.mySecret = secret;
+    state.players = players;
+    state.isHost = (hostId === state.myId);
+    state.speakerIndex = speakerIndex;
+
+    document.getElementById('game-code').textContent = state.roomCode;
+    buildRoleCard(role, secret);
+    buildPlayerList('game-players', players, hostId, speakerIndex);
+
+    // Show host controls
+    const hc = document.getElementById('host-game-controls');
+    hc.style.display = state.isHost ? 'flex' : 'none';
+
+    // Hide speaker area initially
+    document.getElementById('speaker-area').style.display = 'none';
+
+    showScreen('screen-game');
+  });
+
+  /* ── Speaker update ───────────────────────────────────────────── */
+  socket.on('game:speaker', ({ speakerIndex, speakerName, speakerId }) => {
+    state.speakerIndex = speakerIndex;
+    buildPlayerList('game-players', state.players,
+      state.isHost ? state.myId : (state.players.find(p => p.id !== state.myId)?.id),
+      speakerIndex
+    );
+
+    const sa = document.getElementById('speaker-area');
+    sa.style.display = 'block';
+    document.getElementById('speaker-name-display').textContent = speakerName;
+  });
+
+  /* ── Reveal ───────────────────────────────────────────────────── */
+  socket.on('game:reveal', ({ imposterName, imposterId, word, hint }) => {
+    document.getElementById('reveal-imposter-name').textContent = imposterName;
+    document.getElementById('reveal-word').textContent = word;
+    document.getElementById('reveal-hint').textContent = hint;
+
+    const hrc = document.getElementById('host-reveal-controls');
+    const rw  = document.getElementById('reveal-waiting');
+    if (state.isHost) {
+      hrc.style.display = 'block';
+      rw.style.display  = 'none';
+    } else {
+      hrc.style.display = 'none';
+      rw.style.display  = 'block';
+    }
+
+    showScreen('screen-reveal');
+  });
+
+  /* ── Back to lobby ────────────────────────────────────────────── */
+  socket.on('game:backToLobby', () => {
+    state.myRole = null;
+    state.mySecret = '';
+    state.speakerIndex = -1;
+    document.getElementById('lobby-code').textContent = state.roomCode;
+    showScreen('screen-lobby');
+  });
+
+  /* ── Server error messages ────────────────────────────────────── */
+  socket.on('error:msg', (msg) => {
+    setError('start-error', msg);
+  });
+}
+
+/* ── Button: Create Room ─────────────────────────────────────────────── */
+document.getElementById('btn-create').addEventListener('click', () => {
+  const nickname = document.getElementById('create-nickname').value.trim();
+  if (!nickname) { setError('create-error', 'Please enter a nickname.'); return; }
+  setError('create-error', '');
+
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Creating...`;
+
+  initSocket();
+
+  state.nickname = nickname;
+  state.socket.emit('room:create', { nickname }, ({ success, roomCode, error }) => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Create Room`;
+    if (!success) { setError('create-error', error); return; }
+    state.roomCode = roomCode;
+    state.isHost = true;
+    document.getElementById('lobby-code').textContent = roomCode;
+    showScreen('screen-lobby');
+  });
+});
+
+/* ── Button: Join Room ───────────────────────────────────────────────── */
+document.getElementById('btn-join').addEventListener('click', () => {
+  const nickname = document.getElementById('join-nickname').value.trim();
+  const roomCode = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!nickname) { setError('join-error', 'Please enter a nickname.'); return; }
+  if (roomCode.length !== 4) { setError('join-error', 'Room code must be 4 letters.'); return; }
+  setError('join-error', '');
+
+  const btn = document.getElementById('btn-join');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Joining...`;
+
+  initSocket();
+
+  state.nickname = nickname;
+  state.socket.emit('room:join', { nickname, roomCode }, ({ success, error }) => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Join Room`;
+    if (!success) { setError('join-error', error); return; }
+    state.roomCode = roomCode;
+    state.isHost = false;
+    document.getElementById('lobby-code').textContent = roomCode;
+    showScreen('screen-lobby');
+  });
+});
+
+/* ── Enter key on join fields ─────────────────────────────────────────── */
+['join-nickname','join-code'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-join').click();
+  });
+});
+document.getElementById('create-nickname').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-create').click();
+});
+
+/* ── Button: Start Game ──────────────────────────────────────────────── */
+document.getElementById('btn-start').addEventListener('click', () => {
+  setError('start-error', '');
+  state.socket.emit('game:start');
+});
+
+/* ── Button: Next Speaker ────────────────────────────────────────────── */
+document.getElementById('btn-next-speaker').addEventListener('click', () => {
+  state.socket.emit('game:nextSpeaker');
+});
+
+/* ── Button: Reveal Imposter ─────────────────────────────────────────── */
+document.getElementById('btn-reveal').addEventListener('click', () => {
+  if (confirm('Are you sure you want to reveal the Imposter? This will end the round.')) {
+    state.socket.emit('game:reveal');
+  }
+});
+
+/* ── Button: Play Again ──────────────────────────────────────────────── */
+document.getElementById('btn-play-again').addEventListener('click', () => {
+  state.socket.emit('game:playAgain');
+});
+</script>
+</body>
+</html>
