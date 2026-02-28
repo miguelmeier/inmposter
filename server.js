@@ -23,67 +23,74 @@ app.use(express.static(path.join(__dirname, "public")));
 // Word / Hint pairs used during the game
 // ---------------------------------------------------------------------------
 const WORD_PAIRS = [
-  // --- KATEGORIE: "KLINGT VERSAUT, IST ES ABER NICHT" (Die Fallen) ---
-  { word: "Zahnarzt",          hint: "Er sagt dir: 'Mach den Mund weit auf', dann bohrt er." },
-  { word: "Lutscher",          hint: "Man leckt so lange dran, bis er weg ist oder klebt." },
-  { word: "Strohhalm",         hint: "Man muss kräftig saugen, damit etwas rauskommt." },
-  { word: "Banane",            hint: "Muss man pellen, bevor man sie sich in den Mund schiebt." },
-  { word: "Geldautomat",       hint: "Man steckt die Karte rein, drückt rum und hofft, dass was rauskommt." },
-  { word: "Bowlingkugel",      hint: "Man steckt drei Finger in die Löcher und wirft sie weg." },
-  { word: "Socke",             hint: "Man zieht es über den Fuß, manchmal hat es ein Loch." },
-  { word: "Zelt",              hint: "Morgens steht da oft eine Stange, die abends noch nicht da war." },
-  { word: "Ketchupflasche",    hint: "Man klopft auf den Hintern, bis es endlich spritzt." },
-  { word: "Bus",               hint: "Hinten darf man einsteigen, aber man braucht ein Ticket." },
-  { word: "Mikrofon",          hint: "Man hält es fest in der Hand und geht mit dem Mund ganz nah ran." },
+  // --- DIE HARDCORE FALLEN (Klingt nach Sex, ist aber harmlos) ---
+  { word: "Zahnarzt",       hint: "Tief in den Rachen, bis es weh tut." },
+  { word: "Lutscher",       hint: "Erst hart, im Mund dann klebrig." },
+  { word: "Strohhalm",      hint: "Nur durch Saugen kommt was." },
+  { word: "Banane",         hint: "Pellen, dann einführen." },
+  { word: "Geldautomat",    hint: "Karte rein, unten kommt's raus." },
+  { word: "Bowlingkugel",   hint: "Drei Finger rein, dann werfen." },
+  { word: "Socke",          hint: "Zieht man drüber, wird oft steif." },
+  { word: "Zelt",           hint: "Morgens steht die Stange." },
+  { word: "Ketchupflasche", hint: "Hintern hauen bis es spritzt." },
+  { word: "Bus",            hint: "Hinten einsteigen kostet extra." },
+  { word: "Mikrofon",       hint: "Fest umklammern, Lippen ran." },
+  { word: "Schlüssel",      hint: "Drehen bis das Loch aufgeht." },
+  { word: "Staubsauger",    hint: "Bläst nicht, saugt nur." },
+  { word: "Kerze",          hint: "Heißes Wachs und der Stab wird kleiner." },
+  { word: "Teebeutel",      hint: "Rein, raus, bis der Saft kommt." },
+  { word: "Toaster",        hint: "Reinstecken, warten, heiß rausziehen." },
 
-  // --- KATEGORIE: SEX & DATING (Indirekt umschrieben) ---
-  { word: "One Night Stand",   hint: "Frühstück ist in diesem Service meistens nicht inbegriffen." },
-  { word: "Doggy Style",       hint: "Eine Position, bei der man sich gegenseitig nicht ansieht." },
-  { word: "Tinder",            hint: "Fleischbeschau per Daumenbewegung nach rechts oder links." },
-  { word: "Kondom",            hint: "Ein Regenmantel, den man drinnen trägt, damit nichts passiert." },
-  { word: "Pornostar",         hint: "Verdient Geld damit, Dinge zu tun, die andere nur im Schlafzimmer machen." },
-  { word: "Handschellen",      hint: "Metallischer Schmuck für Leute, die gerne gefesselt sind." },
-  { word: "Dildo",             hint: "Ersetzt den Mann, vibriert oft und beschwert sich nie." },
-  { word: "Gleitgel",          hint: "Hilft dabei, wenn es trocken ist und reibt." },
-  { word: "Swingerclub",       hint: "Hier gilt das Motto: Teilen macht Freude." },
-  { word: "Blowjob",           hint: "Eine Arbeit, die man nicht mit den Händen verrichtet." },
-  { word: "Vorspiel",          hint: "Das Aufwärmtraining vor dem eigentlichen Match." },
-  { word: "Orgasmus",          hint: "Der kurze Moment, für den man die ganze Anstrengung macht." },
-  { word: "Stripclub",         hint: "Gucken ist erlaubt, aber Anfassen kostet extra." },
-  { word: "Walk of Shame",     hint: "Der peinliche Heimweg in den Klamotten von gestern Abend." },
-  { word: "69",                hint: "Geben und Nehmen zur exakt gleichen Zeit." },
-  { word: "Sperma",            hint: "Millionen Schwimmer, aber nur einer gewinnt den Preis." },
-  { word: "BH",                hint: "Ein Gefängnis für zwei, das abends oft geöffnet wird." },
+  // --- SEX & DATING (Kurz & Knapp) ---
+  { word: "One Night Stand", hint: "Rein, raus, tschüss." },
+  { word: "Doggy Style",     hint: "Schlechte Aussicht, gutes Gefühl." },
+  { word: "Tinder",          hint: "Wischen, wischen, Treffer." },
+  { word: "Kondom",          hint: "Ohne Gefühl, aber sicher." },
+  { word: "Pornostar",       hint: "Stöhnt beruflich vor Zuschauern." },
+  { word: "Handschellen",    hint: "Klick und fest." },
+  { word: "Dildo",           hint: "Vibriert und meckert nicht." },
+  { word: "Gleitgel",        hint: "Wenn's trocken ist, tut's weh." },
+  { word: "Swingerclub",     hint: "Tausche Partner gegen Partner." },
+  { word: "Blowjob",         hint: "Kopf nicken mit vollem Mund." },
+  { word: "Vorspiel",        hint: "Das Aufwärmen dauert länger als das Spiel." },
+  { word: "Orgasmus",        hint: "Kurz zucken, dann schlafen." },
+  { word: "Stripclub",       hint: "Nur gucken, nicht anfassen." },
+  { word: "Walk of Shame",   hint: "Morgens im Party-Outfit heim." },
+  { word: "69",              hint: "Kopf an Fuß, gerecht verteilt." },
+  { word: "Sperma",          hint: "Nur einer kommt durchs Ziel." },
+  { word: "BH",              hint: "Abends wird die Last befreit." },
+  { word: "Inzest",          hint: "Alles bleibt in der Familie." },
+  { word: "Dreier",          hint: "Einer ist immer das fünfte Rad." },
 
-  // --- KATEGORIE: JUGEND & LIFESTYLE (Zynisch) ---
-  { word: "Influencer",        hint: "Verkauft seine Privatsphäre für Herzchen und Likes." },
-  { word: "Shisha",            hint: "Man teilt sich den Schlauch und bläst Rauch in die Luft." },
-  { word: "Kater",             hint: "Die Rache des Körpers für den Spaß von gestern Nacht." },
-  { word: "Kiffen",            hint: "Es riecht süßlich, macht die Augen rot und den Kühlschrank leer." },
-  { word: "Türsteher",         hint: "Er entscheidet nach Nasenfaktor, wer rein darf." },
-  { word: "Fitnessstudio",     hint: "Man zahlt jeden Monat, geht aber fast nie hin." },
-  { word: "Vegetarier",        hint: "Isst dem Essen das Essen weg." },
-  { word: "Smartphone",        hint: "Man wischt den ganzen Tag darauf rum und ignoriert echte Menschen." },
-  { word: "Ex-Freund",         hint: "Ein Fehler aus der Vergangenheit, den man bereut." },
-  { word: "Friendzone",        hint: "Du darfst zuhören und trösten, aber nicht anfassen." },
-  { word: "Fake ID",           hint: "Ein Stück Plastik, das dich älter macht als du bist." },
+  // --- JUGEND & LIFESTYLE (Trocken) ---
+  { word: "Influencer",      hint: "Nichts können, aber Likes kriegen." },
+  { word: "Shisha",          hint: "Schlauch teilen, Blubbern hören." },
+  { word: "Kater",           hint: "Der Kopf dröhnt, Magen dreht." },
+  { word: "Kiffen",          hint: "Rote Augen, großer Hunger." },
+  { word: "Türsteher",       hint: "Du kommst hier nicht rein." },
+  { word: "Fitnessstudio",   hint: "Zahlen, schwitzen, Spiegel gucken." },
+  { word: "Vegetarier",      hint: "Isst dem Essen das Essen weg." },
+  { word: "Smartphone",      hint: "Streicheln, starren, ignorieren." },
+  { word: "Ex-Freund",       hint: "Ein Fehler mit Namen." },
+  { word: "Friendzone",      hint: "Zuhören ja, Anfassen nein." },
+  { word: "Fake ID",         hint: "Lüge auf Plastik gedruckt." },
 
-  // --- KATEGORIE: BERUF & GESELLSCHAFT ---
-  { word: "Chef",              hint: "Der Typ, der denkt, er hat immer Recht, weil er mehr verdient." },
-  { word: "Arbeitslos",        hint: "Jeden Tag Wochenende, aber leider kein Budget." },
-  { word: "Polizei",           hint: "Kommen meistens dann, wenn der Spaß vorbei ist." },
-  { word: "Lehrer",            hint: "Redet vorne, während hinten keiner zuhört." },
-  { word: "Gynäkologe",        hint: "Guckt beruflich dort hin, wo andere Spaß haben." },
-  { word: "Priester",          hint: "Trägt ein Kleid und hört sich deine Sünden an." },
-  { word: "Beerdigung",        hint: "Alle tragen Schwarz und einer liegt in der Kiste." },
-  { word: "Gefängnis",         hint: "Schwedische Gardinen und Seife bloß nicht fallen lassen." },
-  { word: "Steuern",           hint: "Der Staat nimmt dir Geld weg, bevor du es überhaupt hast." },
+  // --- BERUF & GESELLSCHAFT ---
+  { word: "Chef",            hint: "Oben sitzen, unten treten." },
+  { word: "Arbeitslos",      hint: "Viel Zeit, null Cash." },
+  { word: "Polizei",         hint: "Blaues Licht, Party vorbei." },
+  { word: "Lehrer",          hint: "Redet, keiner hört zu." },
+  { word: "Gynäkologe",      hint: "Guckt rein, wo andere Spaß haben." },
+  { word: "Priester",        hint: "Schwarzes Kleid, hört Geheimnisse." },
+  { word: "Beerdigung",      hint: "Einer liegt, alle weinen." },
+  { word: "Gefängnis",       hint: "Gitterblick und Seife festhalten." },
+  { word: "Steuern",         hint: "Legaler Raubüberfall." },
 
-  // --- KATEGORIE: GEFÄHRLICHES ---
-  { word: "Drogen",            hint: "Teures Pulver oder Tabletten für eine Realitätsflucht." },
-  { word: "Waffe",             hint: "Macht ein lautes Geräusch und Löcher in Dinge." },
-  { word: "Entführung",        hint: "Jemand wird mitgenommen, ohne dass er gefragt wurde." },
-  { word: "Bombe",             hint: "Wenn der rote Draht durchgeschnitten wird, macht es Bumm." }
+  // --- GEFÄHRLICHES ---
+  { word: "Drogen",          hint: "Teurer Urlaub im Kopf." },
+  { word: "Waffe",           hint: "Lauter Knall, Loch drin." },
+  { word: "Entführung",      hint: "Ungewollter Ausflug im Kofferraum." },
+  { word: "Bombe",           hint: "Tick, tack, bumm." }
 ];
 
 // ---------------------------------------------------------------------------
@@ -295,4 +302,5 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`\n🕵️  Imposter Game Server running at http://localhost:${PORT}\n`);
+
 });
