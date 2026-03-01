@@ -1,10 +1,13 @@
 /**
- * IMPOSTER GAME - Backend Server v2
- * Node.js + Express + Socket.io
+ * IMPOSTER GAME — Backend Server v3
  *
- * Features:
- *  - Random shuffled speaker order (Fisher-Yates), reshuffled each cycle
- *  - Full voting system: host starts → everyone votes → live counter → results reveal
+ * New in v3:
+ *  - 60+ themed words (sex, youth, jobs, general) with never-repeat logic per session
+ *  - Voting outcomes:
+ *      TIE         → nobody eliminated, game continues
+ *      INNOCENT    → that player eliminated (spectator), game continues
+ *      IMPOSTER    → crew wins, round over, word + hint revealed
+ *  - Eliminated players can watch but cannot speak or vote
  */
 
 const express = require("express");
@@ -15,104 +18,99 @@ const path    = require("path");
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: "*" } });
-
 app.use(express.static(path.join(__dirname, "public")));
 
-// ---------------------------------------------------------------------------
-// Word / Hint pairs
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// WORD BANK  (word + hint pairs, grouped by theme for balance)
+// ─────────────────────────────────────────────────────────────────────────────
 const WORD_PAIRS = [
-  // --- DIE HARDCORE FALLEN (Klingt nach Sex, ist aber harmlos) ---
-  { word: "Zahnarzt",       hint: "Tief in den Rachen, bis es weh tut." },
-  { word: "Lutscher",       hint: "Erst hart, im Mund dann klebrig." },
-  { word: "Strohhalm",      hint: "Nur durch Saugen kommt was." },
-  { word: "Banane",         hint: "Pellen, dann einführen." },
-  { word: "Geldautomat",    hint: "Karte rein, unten kommt's raus." },
-  { word: "Bowlingkugel",   hint: "Drei Finger rein, dann werfen." },
-  { word: "Socke",          hint: "Zieht man drüber, wird oft steif." },
-  { word: "Zelt",           hint: "Morgens steht die Stange." },
-  { word: "Ketchupflasche", hint: "Hintern hauen bis es spritzt." },
-  { word: "Bus",            hint: "Hinten einsteigen kostet extra." },
-  { word: "Mikrofon",       hint: "Fest umklammern, Lippen ran." },
-  { word: "Schlüssel",      hint: "Drehen bis das Loch aufgeht." },
-  { word: "Staubsauger",    hint: "Bläst nicht, saugt nur." },
-  { word: "Kerze",          hint: "Heißes Wachs und der Stab wird kleiner." },
-  { word: "Teebeutel",      hint: "Rein, raus, bis der Saft kommt." },
-  { word: "Toaster",        hint: "Reinstecken, warten, heiß rausziehen." },
+  // ─── KATEGORIE: "KLINGT WIE SEX, IST ABER HARMLOS" (Die fiesesten Fallen) ───
+  { word: "Zahnarzt",       hint: "Mund auf, Gerät rein, danach tut es weh." },
+  { word: "Lutscher",       hint: "Erst hart, im Mund wird er klebrig und weich." },
+  { word: "Strohhalm",      hint: "Man muss saugen, damit der Saft kommt." },
+  { word: "Banane",         hint: "Pellen, anfassen, in den Mund schieben." },
+  { word: "Geldautomat",    hint: "Karte reinstecken, warten, unten kommt's raus." },
+  { word: "Bowlingkugel",   hint: "Drei Finger in die Löcher, dann kräftig stoßen." },
+  { word: "Socke",          hint: "Zieht man drüber, wird am Fuß oft steif." },
+  { word: "Zelt",           hint: "Morgens steht die Stange ganz von alleine." },
+  { word: "Ketchupflasche", hint: "Auf den Hintern hauen, bis es endlich spritzt." },
+  { word: "Bus",            hint: "Hinten einsteigen ist oft verboten oder kostet extra." },
+  { word: "Mikrofon",       hint: "Fest umklammern und mit den Lippen ganz nah ran." },
+  { word: "Schlüssel",      hint: "Solange drehen, bis das Loch aufgeht." },
+  { word: "Döner",          hint: "Mit viel Fleisch und Soße, saut man sich oft ein." },
+  { word: "Toaster",        hint: "Reinstecken, heiß werden lassen, rausziehen." },
+  { word: "Sahnespender",   hint: "Schütteln, drücken, weiße Masse kommt." },
 
-  // --- SEX & DATING (Kurz & Knapp) ---
-  { word: "One Night Stand", hint: "Rein, raus, tschüss." },
-  { word: "Doggy Style",     hint: "Schlechte Aussicht, gutes Gefühl." },
-  { word: "Tinder",          hint: "Wischen, wischen, Treffer." },
-  { word: "Kondom",          hint: "Ohne Gefühl, aber sicher." },
-  { word: "Pornostar",       hint: "Stöhnt beruflich vor Zuschauern." },
-  { word: "Handschellen",    hint: "Klick und fest." },
-  { word: "Dildo",           hint: "Vibriert und meckert nicht." },
-  { word: "Gleitgel",        hint: "Wenn's trocken ist, tut's weh." },
-  { word: "Swingerclub",     hint: "Tausche Partner gegen Partner." },
-  { word: "Blowjob",         hint: "Kopf nicken mit vollem Mund." },
-  { word: "Vorspiel",        hint: "Das Aufwärmen dauert länger als das Spiel." },
-  { word: "Orgasmus",        hint: "Kurz zucken, dann schlafen." },
-  { word: "Stripclub",       hint: "Nur gucken, nicht anfassen." },
-  { word: "Walk of Shame",   hint: "Morgens im Party-Outfit heim." },
-  { word: "69",              hint: "Kopf an Fuß, gerecht verteilt." },
-  { word: "Sperma",          hint: "Nur einer kommt durchs Ziel." },
-  { word: "BH",              hint: "Abends wird die Last befreit." },
-  { word: "Inzest",          hint: "Alles bleibt in der Familie." },
-  { word: "Dreier",          hint: "Einer ist immer das fünfte Rad." },
+  // ─── KATEGORIE: SEX & DATING (Mechanisch umschrieben) ───
+  { word: "One Night Stand", hint: "Rein, raus, tschüss und nie wieder melden." },
+  { word: "Doggy Style",     hint: "Kein Blickkontakt, aber gute Aussicht." },
+  { word: "Tinder",          hint: "Wischen, bewerten, wegwerfen." },
+  { word: "Kondom",          hint: "Überziehen, damit alles sauber bleibt." },
+  { word: "Pornostar",       hint: "Beruflich stöhnen, damit andere zusehen." },
+  { word: "Handschellen",    hint: "Klick macht es, dann bist du wehrlos." },
+  { word: "Dildo",           hint: "Batterien rein und er beschwert sich nie." },
+  { word: "Gleitgel",        hint: "Wenn es quietscht oder klemmt, nimm das." },
+  { word: "Swingerclub",     hint: "Tausche meins gegen deins." },
+  { word: "Blowjob",         hint: "Arbeit mit dem Mund, nicht mit den Händen." },
+  { word: "Vorspiel",        hint: "Das Aufwärmen dauert länger als das Match." },
+  { word: "Orgasmus",        hint: "Kurzes Zucken, dann ist die Energie weg." },
+  { word: "Stripclub",       hint: "Nur gucken, anfassen kostet extra." },
+  { word: "Walk of Shame",   hint: "Morgens im Party-Outfit nach Hause schleichen." },
+  { word: "69",              hint: "Geben und Nehmen, Kopf an Fuß." },
+  { word: "Sperma",          hint: "Millionen starten, nur einer kommt an." },
+  { word: "BH",              hint: "Wenn er fällt, atmen zwei auf." },
+  { word: "Dreier",          hint: "Einer ist immer das fünfte Rad am Wagen." },
+  { word: "Anal",            hint: "Eingang benutzt, der eigentlich Ausgang ist." },
 
-  // --- JUGEND & LIFESTYLE (Trocken) ---
-  { word: "Influencer",      hint: "Nichts können, aber Likes kriegen." },
-  { word: "Shisha",          hint: "Schlauch teilen, Blubbern hören." },
-  { word: "Kater",           hint: "Der Kopf dröhnt, Magen dreht." },
-  { word: "Kiffen",          hint: "Rote Augen, großer Hunger." },
-  { word: "Türsteher",       hint: "Du kommst hier nicht rein." },
-  { word: "Fitnessstudio",   hint: "Zahlen, schwitzen, Spiegel gucken." },
-  { word: "Vegetarier",      hint: "Isst dem Essen das Essen weg." },
-  { word: "Smartphone",      hint: "Streicheln, starren, ignorieren." },
-  { word: "Ex-Freund",       hint: "Ein Fehler mit Namen." },
-  { word: "Friendzone",      hint: "Zuhören ja, Anfassen nein." },
+  // ─── KATEGORIE: JUGEND & LIFESTYLE (Abstrakt) ───
+  { word: "Influencer",      hint: "Bilder verkaufen, die nicht echt sind." },
+  { word: "Shisha",          hint: "Am Schlauch nuckeln und Rauch blasen." },
+  { word: "Kater",           hint: "Die Quittung für den Spaß von gestern." },
+  { word: "Kiffen",          hint: "Rote Augen, Hunger und alles ist lustig." },
+  { word: "Türsteher",       hint: "Du kommst hier heute nicht rein." },
+  { word: "Fitnessstudio",   hint: "Bezahlen, um schwere Dinge hochzuheben." },
+  { word: "Vegetarier",      hint: "Isst dem Essen das Futter weg." },
+  { word: "Smartphone",      hint: "Wird öfter gestreichelt als der Partner." },
+  { word: "Ex-Freund",       hint: "Ein Fehler, den man bereut." },
+  { word: "Friendzone",      hint: "Zuhören erlaubt, Anfassen verboten." },
   { word: "Fake ID",         hint: "Lüge auf Plastik gedruckt." },
+  { word: "OnlyFans",        hint: "Geldabo für nackte Haut." },
+  { word: "Dickpic",         hint: "Ungefragtes Foto vom kleinen Freund." },
 
-  // --- BERUF & GESELLSCHAFT ---
-  { word: "Chef",            hint: "Oben sitzen, unten treten." },
-  { word: "Arbeitslos",      hint: "Viel Zeit, null Cash." },
-  { word: "Polizei",         hint: "Blaues Licht, Party vorbei." },
-  { word: "Lehrer",          hint: "Redet, keiner hört zu." },
-  { word: "Gynäkologe",      hint: "Guckt rein, wo andere Spaß haben." },
-  { word: "Priester",        hint: "Schwarzes Kleid, hört Geheimnisse." },
-  { word: "Beerdigung",      hint: "Einer liegt, alle weinen." },
-  { word: "Gefängnis",       hint: "Gitterblick und Seife festhalten." },
-  { word: "Steuern",         hint: "Legaler Raubüberfall." },
+  // ─── KATEGORIE: BERUF & GESELLSCHAFT ───
+  { word: "Chef",            hint: "Sitzt oben und hat oft keine Ahnung." },
+  { word: "Arbeitslos",      hint: "Jeden Tag Wochenende, aber kein Geld." },
+  { word: "Polizei",         hint: "Wenn das blaue Licht kommt, ist Schluss." },
+  { word: "Lehrer",          hint: "Redet vorne, hinten schläft alles." },
+  { word: "Gynäkologe",      hint: "Arbeitet dort, wo andere Urlaub machen." },
+  { word: "Priester",        hint: "Männer im Kleid, die Geheimnisse hören." },
+  { word: "Beerdigung",      hint: "Alle schwarz, einer liegt, keiner lacht." },
+  { word: "Gefängnis",       hint: "Gitter vor der Nase, Seife festhalten." },
+  { word: "Steuern",         hint: "Geld weggeben, bevor man es hat." },
+  { word: "Callboy",         hint: "Liebe gegen Stundenlohn." },
 
-  // --- GEFÄHRLICHES ---
-  { word: "Drogen",          hint: "Teurer Urlaub im Kopf." },
-  { word: "Waffe",           hint: "Lauter Knall, Loch drin." },
-  { word: "Entführung",      hint: "Ungewollter Ausflug im Kofferraum." },
-  { word: "Bombe",           hint: "Tick, tack, bumm." }
+  // ─── KATEGORIE: GEFÄHRLICHES ───
+  { word: "Drogen",          hint: "Kurzurlaub im Kopf mit Absturzgarantie." },
+  { word: "Waffe",           hint: "Lauter Knall, dann ist Ruhe." },
+  { word: "Entführung",      hint: "Mitgenommen werden ohne zu fragen." },
+  { word: "Bombe",           hint: "Falscher Draht und es macht Bumm." }
 ];
 
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 // In-memory room store
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 const rooms = {};
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function generateRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  let code = "";
-  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return rooms[code] ? generateRoomCode() : code;
+function genCode() {
+  const c = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let s = "";
+  for (let i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)];
+  return rooms[s] ? genCode() : s;
 }
 
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-/** Fisher-Yates shuffle — returns a NEW shuffled copy */
+/** Fisher-Yates — returns a new shuffled copy */
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -122,84 +120,158 @@ function shuffle(arr) {
   return a;
 }
 
-function broadcastLobby(code) {
-  const room = rooms[code];
-  if (!room) return;
-  io.to(code).emit("lobby:update", { players: room.players, hostId: room.hostId });
+/** Pick a word that hasn't been used yet this session; reset pool if exhausted */
+function pickWord(room) {
+  const available = WORDS.filter((_, i) => !room.usedWordIndices.includes(i));
+  const pool = available.length > 0 ? available : WORDS; // reset if all used
+  if (available.length === 0) room.usedWordIndices = [];   // reset tracking
+
+  const idx = WORDS.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+  room.usedWordIndices.push(idx);
+  return WORDS[idx];
 }
 
-/** Build vote-count summary (does NOT expose who voted for whom) */
-function buildVoteSummary(room) {
+function broadcastLobby(code) {
+  const r = rooms[code];
+  if (!r) return;
+  io.to(code).emit("lobby:update", { players: r.players, hostId: r.hostId });
+}
+
+/** Active players = all players minus eliminated ones */
+function activePlayers(room) {
+  return room.players.filter(p => !room.eliminated.includes(p.id));
+}
+
+/** Build live vote-count summary — counts only, no names */
+function voteSummary(room) {
   const totals = {};
-  room.players.forEach(p => { totals[p.id] = 0; });
-  Object.values(room.votes).forEach(targetId => {
-    if (totals[targetId] !== undefined) totals[targetId]++;
+  activePlayers(room).forEach(p => { totals[p.id] = 0; });
+  Object.values(room.votes).forEach(tid => {
+    if (totals[tid] !== undefined) totals[tid]++;
   });
   return {
     totals,
     voters: Object.keys(room.votes).length,
-    total:  room.players.length,
+    total:  activePlayers(room).length,
   };
 }
 
-/** End the vote and broadcast full results including who-voted-for-whom */
+/**
+ * Finalize a vote round and determine outcome:
+ *  TIE       → nobody eliminated, game continues
+ *  IMPOSTER  → crew wins, round ends
+ *  INNOCENT  → that player eliminated (spectator), game continues
+ */
 function finalizeVote(code) {
   const room = rooms[code];
   if (!room) return;
   room.votingPhase = false;
 
-  const summary    = buildVoteSummary(room);
-  const maxVotes   = Math.max(0, ...Object.values(summary.totals));
-  const mostVotedIds = Object.entries(summary.totals)
-    .filter(([, v]) => v === maxVotes && maxVotes > 0)
+  const active  = activePlayers(room);
+  const summary = voteSummary(room);
+  const maxV    = Math.max(0, ...Object.values(summary.totals));
+
+  // Find who got the most votes
+  const topIds = Object.entries(summary.totals)
+    .filter(([, v]) => v === maxV && maxV > 0)
     .map(([id]) => id);
 
-  // Full transparency: who voted for whom
-  const voteLog = Object.entries(room.votes).map(([voterId, targetId]) => {
-    const voter  = room.players.find(p => p.id === voterId);
-    const target = room.players.find(p => p.id === targetId);
-    return {
-      voterId,
-      voterName:  voter  ? voter.nickname  : "?",
-      targetId,
-      targetName: target ? target.nickname : "?",
-    };
+  // Full vote log
+  const voteLog = Object.entries(room.votes).map(([vid, tid]) => ({
+    voterId:   vid,
+    voterName: room.players.find(p => p.id === vid)?.nickname ?? "?",
+    targetId:  tid,
+    targetName: room.players.find(p => p.id === tid)?.nickname ?? "?",
+  }));
+
+  room.voteHistory.push({
+    round: room.voteHistory.length + 1,
+    totals: summary.totals, topIds, maxVotes: maxV, voteLog,
   });
 
-  room.voteHistory.push({ round: room.voteHistory.length + 1, totals: summary.totals, mostVotedIds, maxVotes, voteLog });
+  // ── TIE — nobody flies ────────────────────────────────────────────────────
+  if (topIds.length !== 1 || maxV === 0) {
+    console.log(`[VOTE] TIE in ${code}`);
+    io.to(code).emit("vote:results", {
+      outcome:    "tie",
+      totals:     summary.totals,
+      topIds,
+      maxVotes:   maxV,
+      voteLog,
+      players:    room.players,
+      eliminated: room.eliminated,
+      round:      room.voteHistory.length,
+    });
+    return;
+  }
 
-  console.log(`[VOTE] Results in ${code} | Leader: ${mostVotedIds.join(",")} (${maxVotes} votes)`);
+  const accusedId     = topIds[0];
+  const accusedPlayer = room.players.find(p => p.id === accusedId);
 
+  // ── IMPOSTER CAUGHT — crew wins ───────────────────────────────────────────
+  if (accusedId === room.imposterId) {
+    room.gamePhase = "crewWin";
+    console.log(`[VOTE] IMPOSTER caught in ${code}: ${accusedPlayer?.nickname}`);
+    io.to(code).emit("vote:results", {
+      outcome:      "crewWin",
+      accusedId,
+      accusedName:  accusedPlayer?.nickname ?? "?",
+      totals:       summary.totals,
+      topIds,
+      maxVotes:     maxV,
+      voteLog,
+      players:      room.players,
+      eliminated:   room.eliminated,
+      word:         room.wordPair.word,
+      hint:         room.wordPair.hint,
+      round:        room.voteHistory.length,
+    });
+    return;
+  }
+
+  // ── INNOCENT ELIMINATED — game continues ──────────────────────────────────
+  room.eliminated.push(accusedId);
+  // Rebuild speaker order without eliminated player
+  room.speakerOrder = shuffle(activePlayers(room).map(p => p.id));
+  room.speakerStep  = -1;
+
+  console.log(`[VOTE] Innocent eliminated in ${code}: ${accusedPlayer?.nickname}`);
   io.to(code).emit("vote:results", {
-    totals:       summary.totals,
-    mostVotedIds,
-    maxVotes,
+    outcome:       "eliminated",
+    accusedId,
+    accusedName:   accusedPlayer?.nickname ?? "?",
+    totals:        summary.totals,
+    topIds,
+    maxVotes:      maxV,
     voteLog,
-    players:      room.players,
-    round:        room.voteHistory.length,
+    players:       room.players,
+    eliminated:    room.eliminated,
+    round:         room.voteHistory.length,
   });
 }
 
-// ---------------------------------------------------------------------------
-// Socket.io connection handler
-// ---------------------------------------------------------------------------
-io.on("connection", (socket) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.io
+// ─────────────────────────────────────────────────────────────────────────────
+io.on("connection", socket => {
   console.log(`[+] ${socket.id}`);
 
-  // ── CREATE ROOM ───────────────────────────────────────────────────────────
+  // ── CREATE ────────────────────────────────────────────────────────────────
   socket.on("room:create", ({ nickname }, cb) => {
-    const code = generateRoomCode();
+    const code = genCode();
     rooms[code] = {
-      hostId:       socket.id,
-      players:      [{ id: socket.id, nickname }],
-      gamePhase:    "lobby",   // lobby | playing | reveal
-      wordPair:     null,
-      imposterId:   null,
-      speakerOrder: [],        // shuffled array of player IDs
-      speakerStep:  -1,        // current index into speakerOrder
-      votingPhase:  false,
-      votes:        {},        // { voterId: targetId }
-      voteHistory:  [],
+      hostId:          socket.id,
+      players:         [{ id: socket.id, nickname }],
+      gamePhase:       "lobby",
+      wordPair:        null,
+      imposterId:      null,
+      eliminated:      [],
+      speakerOrder:    [],
+      speakerStep:     -1,
+      votingPhase:     false,
+      votes:           {},
+      voteHistory:     [],
+      usedWordIndices: [],
     };
     socket.join(code);
     socket.roomCode = code;
@@ -208,23 +280,19 @@ io.on("connection", (socket) => {
     broadcastLobby(code);
   });
 
-  // ── JOIN ROOM ─────────────────────────────────────────────────────────────
+  // ── JOIN ──────────────────────────────────────────────────────────────────
   socket.on("room:join", ({ nickname, roomCode }, cb) => {
     const code = roomCode.toUpperCase().trim();
-    const room = rooms[code];
-    if (!room)
-      return cb({ success: false, error: "Room not found. Double-check the code." });
-    if (room.gamePhase !== "lobby")
-      return cb({ success: false, error: "This game has already started." });
-    if (room.players.length >= 10)
-      return cb({ success: false, error: "Room is full (max 10 players)." });
-    if (room.players.some(p => p.nickname.toLowerCase() === nickname.toLowerCase()))
-      return cb({ success: false, error: "That nickname is already taken." });
+    const r    = rooms[code];
+    if (!r)                        return cb({ success: false, error: "Room not found." });
+    if (r.gamePhase !== "lobby")   return cb({ success: false, error: "Game already started." });
+    if (r.players.length >= 12)    return cb({ success: false, error: "Room full (max 12)." });
+    if (r.players.some(p => p.nickname.toLowerCase() === nickname.toLowerCase()))
+      return cb({ success: false, error: "Nickname already taken." });
 
-    room.players.push({ id: socket.id, nickname });
+    r.players.push({ id: socket.id, nickname });
     socket.join(code);
     socket.roomCode = code;
-    console.log(`[JOIN] "${nickname}" → ${code}`);
     cb({ success: true, roomCode: code });
     broadcastLobby(code);
   });
@@ -232,200 +300,186 @@ io.on("connection", (socket) => {
   // ── START GAME ────────────────────────────────────────────────────────────
   socket.on("game:start", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
-    if (room.players.length < 2)
-      return socket.emit("error:msg", "Need at least 2 players to start.");
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId) return;
+    if (r.players.length < 2) return socket.emit("error:msg", "Need at least 2 players.");
 
-    room.wordPair     = pickRandom(WORD_PAIRS);
-    room.imposterId   = pickRandom(room.players).id;
-    room.gamePhase    = "playing";
-    room.votingPhase  = false;
-    room.votes        = {};
-    room.voteHistory  = [];
-    room.speakerOrder = shuffle(room.players.map(p => p.id));
-    room.speakerStep  = -1;
+    r.wordPair     = pickWord(r);
+    r.imposterId   = r.players[Math.floor(Math.random() * r.players.length)].id;
+    r.gamePhase    = "playing";
+    r.eliminated   = [];
+    r.votingPhase  = false;
+    r.votes        = {};
+    r.voteHistory  = [];
+    r.speakerOrder = shuffle(r.players.map(p => p.id));
+    r.speakerStep  = -1;
 
-    console.log(`[GAME] ${code} | "${room.wordPair.word}" | Imposter: ${room.imposterId}`);
-    console.log(`[ORDER] ${room.speakerOrder.map(id => room.players.find(p=>p.id===id)?.nickname).join(" → ")}`);
+    console.log(`[GAME] ${code} | "${r.wordPair.word}" | Imposter: ${r.players.find(p=>p.id===r.imposterId)?.nickname}`);
 
-    room.players.forEach(player => {
-      const isImposter = player.id === room.imposterId;
-      io.to(player.id).emit("game:started", {
+    r.players.forEach(p => {
+      const isImposter = p.id === r.imposterId;
+      io.to(p.id).emit("game:started", {
         role:         isImposter ? "imposter" : "player",
-        secret:       isImposter ? room.wordPair.hint : room.wordPair.word,
-        players:      room.players,
-        hostId:       room.hostId,
-        speakerOrder: room.speakerOrder,
-        speakerStep:  room.speakerStep,
+        secret:       isImposter ? r.wordPair.hint : r.wordPair.word,
+        players:      r.players,
+        hostId:       r.hostId,
+        eliminated:   r.eliminated,
+        speakerOrder: r.speakerOrder,
+        speakerStep:  r.speakerStep,
       });
     });
   });
 
-  // ── NEXT SPEAKER (Host only) ──────────────────────────────────────────────
+  // ── NEXT SPEAKER ─────────────────────────────────────────────────────────
   socket.on("game:nextSpeaker", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId) return;
 
-    room.speakerStep++;
-
-    // Completed a full cycle → reshuffle for variety
-    if (room.speakerStep >= room.speakerOrder.length) {
-      room.speakerOrder = shuffle(room.players.map(p => p.id));
-      room.speakerStep  = 0;
-      console.log(`[ORDER] Reshuffled in ${code}`);
+    r.speakerStep++;
+    if (r.speakerStep >= r.speakerOrder.length) {
+      r.speakerOrder = shuffle(activePlayers(r).map(p => p.id));
+      r.speakerStep  = 0;
     }
 
-    const speakerId = room.speakerOrder[room.speakerStep];
-    const speaker   = room.players.find(p => p.id === speakerId);
+    const speakerId = r.speakerOrder[r.speakerStep];
+    const speaker   = r.players.find(p => p.id === speakerId);
     if (!speaker) return;
-
-    console.log(`[SPEAK] ${speaker.nickname} (step ${room.speakerStep}) in ${code}`);
 
     io.to(code).emit("game:speaker", {
       speakerId,
       speakerName:  speaker.nickname,
-      speakerStep:  room.speakerStep,
-      speakerOrder: room.speakerOrder,
+      speakerStep:  r.speakerStep,
+      speakerOrder: r.speakerOrder,
     });
   });
 
-  // ── START VOTE (Host only) ────────────────────────────────────────────────
+  // ── START VOTE ────────────────────────────────────────────────────────────
   socket.on("vote:start", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
-    if (room.votingPhase) return;
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId || r.votingPhase) return;
 
-    room.votingPhase = true;
-    room.votes       = {};
-    console.log(`[VOTE] Started in ${code}`);
+    r.votingPhase = true;
+    r.votes       = {};
 
     io.to(code).emit("vote:started", {
-      players: room.players,
-      hostId:  room.hostId,
+      players:   r.players,
+      eliminated: r.eliminated,
+      hostId:    r.hostId,
     });
   });
 
   // ── SUBMIT VOTE ───────────────────────────────────────────────────────────
   socket.on("vote:submit", ({ targetId }) => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || !room.votingPhase) return;
+    const r    = rooms[code];
+    if (!r || !r.votingPhase) return;
 
-    const voter  = room.players.find(p => p.id === socket.id);
-    const target = room.players.find(p => p.id === targetId);
+    const voter  = r.players.find(p => p.id === socket.id);
+    const target = activePlayers(r).find(p => p.id === targetId);
     if (!voter || !target) return;
-    if (room.votes[socket.id]) return; // already voted — immutable
+    // Eliminated players cannot vote
+    if (r.eliminated.includes(socket.id)) return;
+    if (r.votes[socket.id]) return; // already voted
 
-    room.votes[socket.id] = targetId;
-    console.log(`[VOTE] "${voter.nickname}" → "${target.nickname}" in ${code}`);
+    r.votes[socket.id] = targetId;
+    const sum = voteSummary(r);
+    io.to(code).emit("vote:update", sum);
 
-    // Broadcast live count update
-    const summary = buildVoteSummary(room);
-    io.to(code).emit("vote:update", summary);
-
-    // Auto-finalize if everyone voted
-    if (Object.keys(room.votes).length >= room.players.length) {
-      finalizeVote(code);
-    }
+    // Auto-finalize when all active players have voted
+    const activeCount = activePlayers(r).filter(p => !r.eliminated.includes(p.id)).length;
+    if (Object.keys(r.votes).length >= activeCount) finalizeVote(code);
   });
 
-  // ── END VOTE EARLY (Host only) ────────────────────────────────────────────
+  // ── END VOTE EARLY ────────────────────────────────────────────────────────
   socket.on("vote:end", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId || !room.votingPhase) return;
-    console.log(`[VOTE] Force-ended by host in ${code}`);
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId || !r.votingPhase) return;
     finalizeVote(code);
   });
 
-  // ── CLOSE VOTE RESULTS → resume game (Host only) ──────────────────────────
+  // ── CLOSE RESULTS ──────────────────────────────────────────────────────────
+  // If the last vote round ended with crewWin, navigate to win screen.
+  // Otherwise resume the game (tie or innocent eliminated).
   socket.on("vote:close", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
-    io.to(code).emit("vote:closed");
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId) return;
+
+    if (r.gamePhase === "crewWin") {
+      // Pull data from the last vote history entry
+      const last    = r.voteHistory[r.voteHistory.length - 1];
+      const imposter = r.players.find(p => p.id === r.imposterId);
+      io.to(code).emit("game:crewWin", {
+        accusedId:   r.imposterId,
+        accusedName: imposter?.nickname ?? "?",
+        word:        r.wordPair.word,
+        hint:        r.wordPair.hint,
+        maxVotes:    last?.maxVotes ?? 0,
+      });
+    } else {
+      // Tie or innocent eliminated — resume game
+      io.to(code).emit("vote:closed", {
+        eliminated:   r.eliminated,
+        speakerOrder: r.speakerOrder,
+        speakerStep:  r.speakerStep,
+        players:      r.players,
+      });
+    }
   });
 
-  // ── REVEAL IMPOSTER (Host only) ───────────────────────────────────────────
+  // ── REVEAL IMPOSTER ───────────────────────────────────────────────────────
   socket.on("game:reveal", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
-
-    room.gamePhase = "reveal";
-    const imposter = room.players.find(p => p.id === room.imposterId);
-
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId) return;
+    r.gamePhase = "reveal";
+    const imp = r.players.find(p => p.id === r.imposterId);
     io.to(code).emit("game:reveal", {
-      imposterName: imposter ? imposter.nickname : "Unknown",
-      imposterId:   room.imposterId,
-      word:         room.wordPair.word,
-      hint:         room.wordPair.hint,
+      imposterName: imp?.nickname ?? "?",
+      imposterId:   r.imposterId,
+      word:         r.wordPair.word,
+      hint:         r.wordPair.hint,
     });
   });
 
-  // ── PLAY AGAIN (Host only) ────────────────────────────────────────────────
+  // ── PLAY AGAIN ────────────────────────────────────────────────────────────
   socket.on("game:playAgain", () => {
     const code = socket.roomCode;
-    const room = rooms[code];
-    if (!room || socket.id !== room.hostId) return;
-
-    Object.assign(room, {
-      gamePhase:    "lobby",
-      wordPair:     null,
-      imposterId:   null,
-      speakerOrder: [],
-      speakerStep:  -1,
-      votingPhase:  false,
-      votes:        {},
-      voteHistory:  [],
+    const r    = rooms[code];
+    if (!r || socket.id !== r.hostId) return;
+    Object.assign(r, {
+      gamePhase: "lobby", wordPair: null, imposterId: null,
+      eliminated: [], speakerOrder: [], speakerStep: -1,
+      votingPhase: false, votes: {}, voteHistory: [],
     });
-
     io.to(code).emit("game:backToLobby");
     broadcastLobby(code);
   });
 
   // ── DISCONNECT ────────────────────────────────────────────────────────────
   socket.on("disconnect", () => {
-    console.log(`[-] ${socket.id}`);
     const code = socket.roomCode;
     if (!code || !rooms[code]) return;
-    const room = rooms[code];
-
-    room.players = room.players.filter(p => p.id !== socket.id);
-
-    if (room.players.length === 0) {
-      delete rooms[code];
-      return;
+    const r = rooms[code];
+    r.players = r.players.filter(p => p.id !== socket.id);
+    if (r.players.length === 0) { delete rooms[code]; return; }
+    if (r.hostId === socket.id) r.hostId = r.players[0].id;
+    r.speakerOrder = r.speakerOrder.filter(id => id !== socket.id);
+    r.eliminated   = r.eliminated.filter(id => id !== socket.id);
+    if (r.speakerStep >= r.speakerOrder.length) r.speakerStep = 0;
+    if (r.votingPhase) {
+      delete r.votes[socket.id];
+      io.to(code).emit("vote:update", voteSummary(r));
+      const activeCount = activePlayers(r).length;
+      if (activeCount > 0 && Object.keys(r.votes).length >= activeCount) finalizeVote(code);
     }
-
-    if (room.hostId === socket.id) {
-      room.hostId = room.players[0].id;
-      console.log(`[HOST] Transferred to "${room.players[0].nickname}" in ${code}`);
-    }
-
-    // Keep speaker order consistent
-    room.speakerOrder = room.speakerOrder.filter(id => id !== socket.id);
-    if (room.speakerStep >= room.speakerOrder.length) room.speakerStep = 0;
-
-    // Handle mid-vote disconnect
-    if (room.votingPhase) {
-      delete room.votes[socket.id];
-      const summary = buildVoteSummary(room);
-      io.to(code).emit("vote:update", summary);
-      if (room.players.length > 0 && Object.keys(room.votes).length >= room.players.length) {
-        finalizeVote(code);
-      }
-    }
-
     broadcastLobby(code);
   });
 });
 
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`\n🕵️  Imposter Game v2 → http://localhost:${PORT}\n`);
-});
+server.listen(PORT, () => console.log(`\n🕵️  Imposter v3 → http://localhost:${PORT}\n`));
