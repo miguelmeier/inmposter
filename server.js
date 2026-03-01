@@ -23,7 +23,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ─────────────────────────────────────────────────────────────────────────────
 // WORD BANK  (word + hint pairs, grouped by theme for balance)
 // ─────────────────────────────────────────────────────────────────────────────
-const WORD_PAIRS = [
+const WORDS = [
   // ─── KATEGORIE: "KLINGT WIE SEX, IST ABER HARMLOS" (Die fiesesten Fallen) ───
   { word: "Zahnarzt",       hint: "Mund auf, Gerät rein, danach tut es weh." },
   { word: "Lutscher",       hint: "Erst hart, im Mund wird er klebrig und weich." },
