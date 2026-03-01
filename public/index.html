@@ -9,1020 +9,880 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <script src="/socket.io/socket.io.js"></script>
-
   <style>
     :root {
-      --bg:        #080b10;
-      --surface:   #0e1420;
-      --surface2:  #151d2e;
-      --border:    #1e2d45;
-      --amber:     #f5a623;
-      --amber-dim: #9a6710;
-      --cyan:      #00e5ff;
-      --cyan-dim:  #006070;
-      --red:       #ff3b5c;
-      --green:     #00e87e;
-      --purple:    #b060ff;
-      --text:      #c8d8f0;
-      --text-dim:  #4a607a;
-      --display:   'Bebas Neue', sans-serif;
-      --mono:      'JetBrains Mono', monospace;
+      --bg:       #080b10;
+      --s1:       #0e1420;
+      --s2:       #151d2e;
+      --bd:       #1e2d45;
+      --amber:    #f5a623;
+      --amberd:   #9a6710;
+      --cyan:     #00e5ff;
+      --cyand:    #006070;
+      --red:      #ff3b5c;
+      --green:    #00e87e;
+      --purple:   #b060ff;
+      --txt:      #c8d8f0;
+      --txtd:     #4a607a;
+      --D:        'Bebas Neue', sans-serif;
+      --M:        'JetBrains Mono', monospace;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--mono);
-      min-height: 100vh;
-      overflow-x: hidden;
+      background: var(--bg); color: var(--txt);
+      font-family: var(--M); min-height: 100vh; overflow-x: hidden;
     }
     body::before {
-      content: '';
-      position: fixed; inset: 0;
+      content: ''; position: fixed; inset: 0;
       background-image:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 48px 48px;
-      opacity: 0.3; pointer-events: none; z-index: 0;
+        linear-gradient(var(--bd) 1px, transparent 1px),
+        linear-gradient(90deg, var(--bd) 1px, transparent 1px);
+      background-size: 48px 48px; opacity: .28; pointer-events: none; z-index: 0;
     }
     body::after {
-      content: '';
-      position: fixed;
+      content: ''; position: fixed;
       width: 700px; height: 700px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(245,166,35,.055) 0%, transparent 70%);
       top: -250px; left: 50%; transform: translateX(-50%);
       pointer-events: none; z-index: 0;
     }
-
     #app {
       position: relative; z-index: 1;
-      min-height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 24px 16px 40px;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px 16px 48px;
     }
 
     /* ── Screens ── */
     .screen { display: none; width: 100%; max-width: 500px; }
-    .screen.active { display: block; animation: fadeUp .35s ease forwards; }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    .screen.active { display: block; animation: fup .35s ease forwards; }
+    @keyframes fup { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ── Logo ── */
-    .logo { font-family: var(--display); letter-spacing: 6px; color: var(--amber); text-shadow: 0 0 40px rgba(245,166,35,.4); line-height: .9; }
-    .logo-sub { font-size: 10px; letter-spacing: 5px; color: var(--text-dim); text-transform: uppercase; margin-top: 6px; }
+    /* ── Typography ── */
+    .logo { font-family: var(--D); letter-spacing: 6px; color: var(--amber); text-shadow: 0 0 36px rgba(245,166,35,.4); line-height: .9; }
+    .logo-sub { font-size: 10px; letter-spacing: 5px; color: var(--txtd); text-transform: uppercase; margin-top: 6px; }
 
     /* ── Card ── */
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 24px;
-      position: relative;
+      background: var(--s1); border: 1px solid var(--bd);
+      border-radius: 4px; padding: 22px; position: relative;
     }
     .card::before {
-      content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 2px;
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, transparent, var(--amber), transparent);
       border-radius: 4px 4px 0 0;
     }
-    .card.cyan-top::before { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
-    .card.red-top::before  { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+    .card.c-cyan::before   { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+    .card.c-red::before    { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+    .card.c-green::before  { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+    .card.c-purple::before { background: linear-gradient(90deg, transparent, var(--purple), transparent); }
 
     /* ── Section title ── */
     .stitle {
-      font-family: var(--display); font-size: 20px; letter-spacing: 3px;
-      color: var(--cyan); margin-bottom: 16px;
+      font-family: var(--D); font-size: 18px; letter-spacing: 3px;
+      color: var(--cyan); margin-bottom: 14px;
       display: flex; align-items: center; gap: 10px;
     }
-    .stitle::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .stitle.amber { color: var(--amber); }
-    .stitle.red   { color: var(--red); }
+    .stitle::after { content: ''; flex: 1; height: 1px; background: var(--bd); }
+    .stitle.a { color: var(--amber); } .stitle.r { color: var(--red); }
+    .stitle.g { color: var(--green); } .stitle.p { color: var(--purple); }
 
     /* ── Input ── */
     .inp {
-      width: 100%; background: var(--surface2);
-      border: 1px solid var(--border); border-radius: 3px;
-      color: var(--text); font-family: var(--mono); font-size: 14px;
-      padding: 11px 14px; outline: none;
-      transition: border-color .2s, box-shadow .2s;
+      width: 100%; background: var(--s2); border: 1px solid var(--bd); border-radius: 3px;
+      color: var(--txt); font-family: var(--M); font-size: 14px;
+      padding: 11px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
     }
     .inp:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,166,35,.12); }
-    .inp::placeholder { color: var(--text-dim); }
-    .inp.code-input { text-transform: uppercase; letter-spacing: 6px; font-size: 18px; text-align: center; }
-    label { display: block; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+    .inp::placeholder { color: var(--txtd); }
+    .inp.code { text-transform: uppercase; letter-spacing: 6px; font-size: 18px; text-align: center; }
+    label { display: block; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--txtd); margin-bottom: 6px; }
 
     /* ── Buttons ── */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      font-family: var(--display); letter-spacing: 2px; font-size: 17px;
-      padding: 13px 24px; border: none; border-radius: 3px;
-      cursor: pointer; transition: transform .15s, box-shadow .2s, opacity .2s;
-      width: 100%;
+      font-family: var(--D); letter-spacing: 2px; font-size: 16px;
+      padding: 13px 22px; border: none; border-radius: 3px;
+      cursor: pointer; transition: transform .14s, box-shadow .2s, opacity .2s; width: 100%;
     }
-    .btn:active { transform: scale(.97); }
-    .btn:disabled { opacity: .35; cursor: not-allowed; }
-    .btn-amber { background: var(--amber); color: #000; box-shadow: 0 4px 20px rgba(245,166,35,.3); }
-    .btn-amber:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(245,166,35,.55); }
-    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn-ghost:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
-    .btn-cyan { background: var(--cyan); color: #000; box-shadow: 0 4px 20px rgba(0,229,255,.25); }
-    .btn-cyan:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(0,229,255,.5); }
-    .btn-red { background: var(--red); color: #fff; box-shadow: 0 4px 20px rgba(255,59,92,.25); }
-    .btn-red:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(255,59,92,.5); }
-    .btn-green { background: var(--green); color: #000; box-shadow: 0 4px 20px rgba(0,232,126,.25); }
-    .btn-green:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(0,232,126,.5); }
-    .btn-purple { background: var(--purple); color: #fff; box-shadow: 0 4px 20px rgba(176,96,255,.25); }
-    .btn-purple:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(176,96,255,.5); }
-    .btn-sm { font-size: 13px; letter-spacing: 1px; padding: 9px 16px; }
+    .btn:active { transform: scale(.97); } .btn:disabled { opacity: .35; cursor: not-allowed; }
+    .b-amber  { background: var(--amber); color: #000; box-shadow: 0 4px 20px rgba(245,166,35,.3); }
+    .b-amber:hover:not(:disabled)  { box-shadow: 0 4px 28px rgba(245,166,35,.55); }
+    .b-ghost  { background: transparent; border: 1px solid var(--bd); color: var(--txt); }
+    .b-ghost:hover:not(:disabled)  { border-color: var(--amber); color: var(--amber); }
+    .b-cyan   { background: var(--cyan); color: #000; box-shadow: 0 4px 20px rgba(0,229,255,.25); }
+    .b-cyan:hover:not(:disabled)   { box-shadow: 0 4px 28px rgba(0,229,255,.5); }
+    .b-red    { background: var(--red); color: #fff; box-shadow: 0 4px 20px rgba(255,59,92,.25); }
+    .b-red:hover:not(:disabled)    { box-shadow: 0 4px 28px rgba(255,59,92,.5); }
+    .b-green  { background: var(--green); color: #000; box-shadow: 0 4px 20px rgba(0,232,126,.25); }
+    .b-green:hover:not(:disabled)  { box-shadow: 0 4px 28px rgba(0,232,126,.5); }
+    .b-purple { background: var(--purple); color: #fff; box-shadow: 0 4px 20px rgba(176,96,255,.25); }
+    .b-purple:hover:not(:disabled) { box-shadow: 0 4px 28px rgba(176,96,255,.5); }
+    .b-sm { font-size: 13px; padding: 9px 16px; }
 
     /* ── Room badge ── */
-    .room-badge {
+    .rbadge {
       display: inline-flex; align-items: center; gap: 8px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 3px; padding: 7px 13px;
-      font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
+      background: var(--s2); border: 1px solid var(--bd); border-radius: 3px;
+      padding: 6px 12px; font-size: 10px; letter-spacing: 2px; color: var(--txtd);
     }
-    .room-badge .code { font-family: var(--display); font-size: 20px; letter-spacing: 6px; color: var(--amber); }
+    .rbadge .code { font-family: var(--D); font-size: 19px; letter-spacing: 6px; color: var(--amber); }
 
     /* ── Player item ── */
-    .player-item {
-      display: flex; align-items: center; gap: 12px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 3px; padding: 10px 14px;
-      transition: border-color .2s, box-shadow .2s;
-      animation: slideIn .25s ease forwards;
+    .pi {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--s2); border: 1px solid var(--bd); border-radius: 3px;
+      padding: 10px 13px; transition: all .2s;
+      animation: si .22s ease forwards;
     }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(-10px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    .player-item.is-speaker {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 1px var(--cyan), 0 4px 18px rgba(0,229,255,.15);
-    }
-    .player-item.is-voted {
-      border-color: var(--red);
-      box-shadow: 0 0 0 1px rgba(255,59,92,.4);
-    }
-    .avatar {
-      width: 32px; height: 32px; border-radius: 3px; flex-shrink: 0;
+    @keyframes si { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .pi.spk   { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 4px 14px rgba(0,229,255,.12); }
+    .pi.elim  { opacity: .5; background: rgba(255,59,92,.04); border-color: rgba(255,59,92,.3); }
+    .av {
+      width: 30px; height: 30px; border-radius: 3px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--display); font-size: 17px;
-      background: var(--border); color: var(--amber);
+      font-family: var(--D); font-size: 16px; background: var(--bd); color: var(--amber);
     }
     .pname { font-size: 13px; font-weight: 500; flex: 1; }
+    .elim .pname { text-decoration: line-through; color: var(--txtd); }
     .tag {
       font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-      padding: 3px 7px; border-radius: 2px;
+      padding: 2px 6px; border-radius: 2px;
     }
-    .tag-host     { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid var(--amber-dim); }
-    .tag-you      { background: rgba(0,229,255,.1);  color: var(--cyan);  border: 1px solid var(--cyan-dim); }
-    .tag-speaking { background: rgba(0,229,255,.18); color: var(--cyan);  border: 1px solid var(--cyan); }
+    .t-host  { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid var(--amberd); }
+    .t-you   { background: rgba(0,229,255,.1);  color: var(--cyan);  border: 1px solid var(--cyand); }
+    .t-spk   { background: rgba(0,229,255,.18); color: var(--cyan);  border: 1px solid var(--cyan); }
+    .t-elim  { background: rgba(255,59,92,.1);  color: var(--red);   border: 1px solid rgba(255,59,92,.3); }
 
     /* ── Role card ── */
-    .role-card { border-radius: 4px; padding: 28px 20px; text-align: center; position: relative; overflow: hidden; }
-    .role-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,.035), transparent 60%); }
-    .role-card.crew     { background: linear-gradient(135deg, #0a1a0e, #0e2016); border: 1px solid #1a4025; }
-    .role-card.imposter { background: linear-gradient(135deg, #1a060a, #220d10); border: 1px solid #4a1020; }
-    .rlabel { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
-    .rname  { font-family: var(--display); font-size: 52px; letter-spacing: 4px; line-height: 1; }
-    .crew .rname     { color: var(--green); text-shadow: 0 0 28px rgba(0,232,126,.4); }
-    .imposter .rname { color: var(--red);   text-shadow: 0 0 28px rgba(255,59,92,.4); }
-    .rdiv { width: 40px; height: 2px; margin: 14px auto; }
+    .rc { border-radius: 4px; padding: 26px 18px; text-align: center; position: relative; overflow: hidden; }
+    .rc::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,.03), transparent 60%); }
+    .rc.crew     { background: linear-gradient(135deg, #0a1a0e, #0e2016); border: 1px solid #1a4025; }
+    .rc.imposter { background: linear-gradient(135deg, #1a060a, #220d10); border: 1px solid #4a1020; }
+    .rl  { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--txtd); margin-bottom: 5px; }
+    .rn  { font-family: var(--D); font-size: 50px; letter-spacing: 4px; line-height: 1; }
+    .crew .rn     { color: var(--green); text-shadow: 0 0 26px rgba(0,232,126,.4); }
+    .imposter .rn { color: var(--red);   text-shadow: 0 0 26px rgba(255,59,92,.4); }
+    .rdiv { width: 38px; height: 2px; margin: 12px auto; }
     .crew .rdiv     { background: var(--green); }
     .imposter .rdiv { background: var(--red); }
-    .rinstruct { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
-    .secret-word { font-family: var(--display); font-size: 38px; letter-spacing: 4px; color: var(--amber); text-shadow: 0 0 18px rgba(245,166,35,.5); }
-    .secret-hint { font-size: 14px; color: var(--text); line-height: 1.7; font-style: italic; }
+    .ri  { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--txtd); margin-bottom: 8px; }
+    .sw  { font-family: var(--D); font-size: 36px; letter-spacing: 3px; color: var(--amber); text-shadow: 0 0 16px rgba(245,166,35,.5); }
+    .sh  { font-size: 14px; color: var(--txt); line-height: 1.65; font-style: italic; }
 
     /* ── Speaker banner ── */
-    .speaker-banner {
-      text-align: center; padding: 14px 16px; border-radius: 3px;
+    .sb {
+      text-align: center; padding: 12px 14px; border-radius: 3px;
       background: rgba(0,229,255,.07); border: 1px solid rgba(0,229,255,.3);
-      animation: glowPulse 2s ease infinite;
+      animation: glow 2s ease infinite;
     }
-    @keyframes glowPulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,.15); }
-      50%      { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
-    }
-    .sblabel { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--text-dim); }
-    .sbname  { font-family: var(--display); font-size: 30px; letter-spacing: 3px; color: var(--cyan); }
+    @keyframes glow { 0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,.15); } 50% { box-shadow: 0 0 0 8px rgba(0,229,255,0); } }
+    .sbl { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--txtd); }
+    .sbn { font-family: var(--D); font-size: 28px; letter-spacing: 3px; color: var(--cyan); }
 
-    /* ── Speaker queue strip ── */
-    .queue-strip { display: flex; gap: 6px; flex-wrap: wrap; }
-    .queue-chip {
-      padding: 4px 10px; border-radius: 2px; font-size: 11px; letter-spacing: 1px;
-      border: 1px solid var(--border); color: var(--text-dim); background: var(--surface2);
-      transition: all .2s;
+    /* ── Queue strip ── */
+    .qstrip { display: flex; gap: 5px; flex-wrap: wrap; }
+    .qchip {
+      padding: 3px 9px; border-radius: 2px; font-size: 11px; letter-spacing: .5px;
+      border: 1px solid var(--bd); color: var(--txtd); background: var(--s2);
     }
-    .queue-chip.current { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,.1); font-weight: 700; }
-    .queue-chip.done    { opacity: .35; text-decoration: line-through; }
+    .qchip.cur  { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,.1); font-weight: 700; }
+    .qchip.done { opacity: .35; text-decoration: line-through; }
+    .qchip.out  { opacity: .25; text-decoration: line-through; color: var(--red); border-color: rgba(255,59,92,.2); }
 
     /* ── Divider ── */
-    .divider { display: flex; align-items: center; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 2px; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .dvd { display: flex; align-items: center; gap: 12px; color: var(--txtd); font-size: 11px; letter-spacing: 2px; }
+    .dvd::before, .dvd::after { content: ''; flex: 1; height: 1px; background: var(--bd); }
 
     /* ── Error ── */
-    .err { font-size: 12px; color: var(--red); letter-spacing: .5px; margin-top: 5px; min-height: 17px; }
+    .err { font-size: 12px; color: var(--red); letter-spacing: .5px; margin-top: 5px; min-height: 16px; }
 
     /* ── Spinner ── */
-    .spin { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.25); border-top-color: #000; border-radius: 50%; animation: rot .6s linear infinite; display: inline-block; }
-    @keyframes rot { to { transform: rotate(360deg); } }
+    .spin { width: 15px; height: 15px; border: 2px solid rgba(0,0,0,.25); border-top-color: #000; border-radius: 50%; animation: r .6s linear infinite; display: inline-block; }
+    @keyframes r { to { transform: rotate(360deg); } }
 
-    /* ══════════════════════════════════════════════════════════════
-       VOTING OVERLAY
-    ══════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════════
+       MODAL OVERLAY
+    ═══════════════════════════════════════════════════════════════ */
     .overlay {
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(8,11,16,.92);
-      backdrop-filter: blur(6px);
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px;
-      animation: fadeIn .25s ease forwards;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(6,9,14,.92); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      animation: fin .22s ease forwards;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fin { from { opacity: 0; } to { opacity: 1; } }
     .overlay.hidden { display: none; }
-    .overlay-box {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 6px; padding: 28px; width: 100%; max-width: 480px;
-      max-height: 90vh; overflow-y: auto;
-      position: relative;
-      animation: popUp .3s cubic-bezier(.34,1.56,.64,1) forwards;
+    .obox {
+      background: var(--s1); border: 1px solid var(--bd);
+      border-radius: 6px; padding: 26px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; position: relative;
+      animation: pop .3s cubic-bezier(.34,1.56,.64,1) forwards;
     }
-    @keyframes popUp {
-      from { opacity: 0; transform: scale(.92) translateY(12px); }
-      to   { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    .overlay-box::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--purple), transparent);
-      border-radius: 6px 6px 0 0;
-    }
+    @keyframes pop { from { opacity: 0; transform: scale(.9) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
-    /* Vote target cards */
-    .vote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    @media (max-width: 400px) { .vote-grid { grid-template-columns: 1fr; } }
-    .vote-card {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 4px; padding: 14px 12px; cursor: pointer;
-      text-align: center; transition: all .18s;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    /* ── Vote grid ── */
+    .vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (max-width: 380px) { .vgrid { grid-template-columns: 1fr; } }
+    .vcard {
+      background: var(--s2); border: 1px solid var(--bd); border-radius: 4px;
+      padding: 12px 10px; cursor: pointer; text-align: center;
+      transition: all .16s; display: flex; flex-direction: column; align-items: center; gap: 7px;
     }
-    .vote-card:hover:not(.disabled):not(.selected) {
-      border-color: var(--purple); background: rgba(176,96,255,.07);
-      transform: translateY(-2px);
-    }
-    .vote-card.selected {
-      border-color: var(--purple);
-      background: rgba(176,96,255,.15);
-      box-shadow: 0 0 0 1px var(--purple), 0 4px 16px rgba(176,96,255,.2);
-    }
-    .vote-card.disabled { opacity: .45; cursor: not-allowed; }
-    .vote-card .vavatar {
-      width: 40px; height: 40px; border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--display); font-size: 22px;
-      background: var(--border); color: var(--amber);
-    }
-    .vote-card .vname { font-size: 13px; font-weight: 500; }
-    .vote-card .vcount {
-      font-family: var(--display); font-size: 28px; color: var(--red);
-      min-height: 34px;
-    }
+    .vcard:hover:not(.locked):not(.sel) { border-color: var(--purple); background: rgba(176,96,255,.07); transform: translateY(-2px); }
+    .vcard.sel  { border-color: var(--purple); background: rgba(176,96,255,.14); box-shadow: 0 0 0 1px var(--purple), 0 4px 14px rgba(176,96,255,.2); }
+    .vcard.locked { opacity: .45; cursor: not-allowed; }
+    .vcard .va  { width: 38px; height: 38px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-family: var(--D); font-size: 20px; background: var(--bd); color: var(--amber); }
+    .vcard .vn  { font-size: 13px; font-weight: 500; }
+    .vcard .vc  { font-family: var(--D); font-size: 26px; color: var(--red); min-height: 32px; line-height: 1; }
 
-    /* Vote progress bar */
-    .vote-progress-track {
-      height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
-    }
-    .vote-progress-fill {
-      height: 100%; background: var(--purple);
-      border-radius: 2px; transition: width .4s ease;
-    }
+    /* ── Progress ── */
+    .ptrack { height: 4px; background: var(--bd); border-radius: 2px; overflow: hidden; }
+    .pfill  { height: 100%; background: var(--purple); border-radius: 2px; transition: width .4s ease; }
 
-    /* ── Results overlay ── */
-    .result-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .result-bar-name { width: 90px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
-    .result-bar-track { flex: 1; height: 24px; background: var(--surface2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
-    .result-bar-fill {
-      height: 100%; border-radius: 3px;
-      display: flex; align-items: center; padding-left: 8px;
-      font-family: var(--display); font-size: 16px; color: #000;
-      transition: width 1s cubic-bezier(.22,1,.36,1);
-      min-width: 0;
-    }
-    .result-bar-fill.leader { background: var(--red); }
-    .result-bar-fill.normal { background: rgba(255,255,255,.18); }
-    .result-bar-fill.zero   { background: var(--border); width: 6px !important; }
+    /* ── Result bars ── */
+    .rrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .rname { width: 84px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+    .rtrack { flex: 1; height: 22px; background: var(--s2); border-radius: 3px; overflow: hidden; border: 1px solid var(--bd); }
+    .rfill  { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 7px; font-family: var(--D); font-size: 15px; transition: width 1s cubic-bezier(.22,1,.36,1); min-width: 0; color: #000; }
+    .rfill.lead { background: var(--red); }
+    .rfill.norm { background: rgba(255,255,255,.18); color: var(--txt); }
+    .rfill.zero { background: var(--bd); width: 4px !important; }
 
-    /* vote log */
-    .vote-log-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 10px; border-radius: 3px;
-      background: var(--surface2); border: 1px solid var(--border);
-      font-size: 12px;
-      animation: slideIn .25s ease forwards;
-    }
-    .vl-arrow { color: var(--text-dim); }
-    .vl-voter  { color: var(--text); }
+    /* ── Vote log ── */
+    .vli { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 3px; background: var(--s2); border: 1px solid var(--bd); font-size: 12px; animation: si .22s ease forwards; }
+    .vli.hit { border-color: rgba(255,59,92,.35); background: rgba(255,59,92,.06); }
+    .vl-voter  { color: var(--txt); }
+    .vl-arrow  { color: var(--txtd); }
     .vl-target { color: var(--red); font-weight: 600; }
-    .voted-on-me { border-color: rgba(255,59,92,.4); background: rgba(255,59,92,.06); }
 
-    /* ── Reveal screen ── */
-    .reveal-hero {
-      text-align: center; border-radius: 4px; padding: 28px 20px;
-      background: linear-gradient(135deg, #1a060a, #220d10);
-      border: 1px solid #4a1020;
+    /* ── Outcome banners ── */
+    .outcome-tie  { background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.3); border-radius: 4px; padding: 16px; text-align: center; }
+    .outcome-elim { background: rgba(255,59,92,.08);  border: 1px solid rgba(255,59,92,.3);  border-radius: 4px; padding: 16px; text-align: center; }
+    .outcome-win  { background: rgba(0,232,126,.08);  border: 1px solid rgba(0,232,126,.3);  border-radius: 4px; padding: 16px; text-align: center; }
+
+    /* ── Crew win screen ── */
+    .win-glow { text-shadow: 0 0 40px rgba(0,232,126,.6); }
+
+    /* ── Eliminated overlay (for spectator mode) ── */
+    .elim-banner {
+      background: rgba(255,59,92,.1); border: 1px solid rgba(255,59,92,.3);
+      border-radius: 3px; padding: 12px 16px; text-align: center; margin-bottom: 12px;
     }
-    .ri-name { font-family: var(--display); font-size: 46px; letter-spacing: 4px; color: var(--red); text-shadow: 0 0 28px rgba(255,59,92,.5); }
-    .word-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 14px; text-align: center; }
-    .word-box .wlabel { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
-    .word-box .wvalue { font-family: var(--display); font-size: 30px; letter-spacing: 3px; color: var(--amber); }
 
     ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: var(--surface); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: var(--s1); }
+    ::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 3px; }
   </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ═══════════════════ SCREEN: LANDING ═══════════════════ -->
-  <div class="screen active" id="screen-landing">
-    <div style="text-align:center;margin-bottom:36px;">
-      <div class="logo" style="font-size:clamp(60px,15vw,92px);">IMPOSTER</div>
+  <!-- ════════════════ LANDING ════════════════ -->
+  <div class="screen active" id="s-land">
+    <div style="text-align:center;margin-bottom:34px;">
+      <div class="logo" style="font-size:clamp(58px,15vw,90px);">IMPOSTER</div>
       <div class="logo-sub">// multiplayer spy word game</div>
     </div>
-
-    <div class="card" style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card" style="display:flex;flex-direction:column;gap:14px;">
       <div>
-        <div class="stitle amber">Create Room</div>
-        <div style="margin-bottom:12px;">
+        <div class="stitle a">Create Room</div>
+        <div style="margin-bottom:10px;">
           <label>Nickname</label>
-          <input id="create-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" />
+          <input id="c-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" />
         </div>
-        <button class="btn btn-amber" id="btn-create">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <button class="btn b-amber" id="btn-create">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           Create Room
         </button>
-        <div class="err" id="err-create"></div>
+        <div class="err" id="e-create"></div>
       </div>
-
-      <div class="divider">OR</div>
-
+      <div class="dvd">OR</div>
       <div>
         <div class="stitle">Join Room</div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
-          <div>
-            <label>Nickname</label>
-            <input id="join-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" />
-          </div>
-          <div>
-            <label>Room Code</label>
-            <input id="join-code" class="inp code-input" placeholder="ABCD" maxlength="4" autocomplete="off" />
-          </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div><label>Nickname</label><input id="j-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" /></div>
+          <div><label>Room Code</label><input id="j-code" class="inp code" placeholder="ABCD" maxlength="4" autocomplete="off" /></div>
         </div>
-        <button class="btn btn-ghost" id="btn-join">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <button class="btn b-ghost" id="btn-join">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           Join Room
         </button>
-        <div class="err" id="err-join"></div>
+        <div class="err" id="e-join"></div>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════ SCREEN: LOBBY ═══════════════════ -->
-  <div class="screen" id="screen-lobby">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div class="logo" style="font-size:40px;letter-spacing:4px;">IMPOSTER</div>
-        <div class="logo-sub">LOBBY</div>
-      </div>
-      <div class="room-badge">
-        ROOM&nbsp;<span class="code" id="lobby-code">----</span>
-        <button onclick="copyCode()" title="Copy" style="background:none;border:none;cursor:pointer;color:var(--text-dim);">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+  <!-- ════════════════ LOBBY ════════════════ -->
+  <div class="screen" id="s-lobby">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+      <div><div class="logo" style="font-size:38px;letter-spacing:4px;">IMPOSTER</div><div class="logo-sub">LOBBY</div></div>
+      <div class="rbadge">ROOM&nbsp;<span class="code" id="lb-code">----</span>
+        <button onclick="cpCode()" style="background:none;border:none;cursor:pointer;color:var(--txtd);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
       </div>
     </div>
-    <div class="card" style="margin-bottom:14px;">
+    <div class="card" style="margin-bottom:12px;">
       <div class="stitle">Players</div>
-      <div id="lobby-players" style="display:flex;flex-direction:column;gap:8px;"></div>
-      <div style="margin-top:12px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">Share the room code with friends.</div>
+      <div id="lb-players" style="display:flex;flex-direction:column;gap:7px;"></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--txtd);letter-spacing:1px;">Share the code with friends.</div>
     </div>
-    <div id="host-start-wrap" style="display:none;">
-      <button class="btn btn-amber" id="btn-start">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <div id="lb-host" style="display:none;">
+      <button class="btn b-amber" id="btn-start">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Start Game
       </button>
-      <div class="err" id="err-start"></div>
+      <div class="err" id="e-start"></div>
     </div>
   </div>
 
-  <!-- ═══════════════════ SCREEN: GAME ═══════════════════ -->
-  <div class="screen" id="screen-game">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px;">
-      <div>
-        <div class="logo" style="font-size:34px;letter-spacing:3px;">IMPOSTER</div>
-        <div class="logo-sub">IN PROGRESS</div>
-      </div>
-      <div class="room-badge">ROOM&nbsp;<span class="code" id="game-code">----</span></div>
+  <!-- ════════════════ GAME ════════════════ -->
+  <div class="screen" id="s-game">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div><div class="logo" style="font-size:32px;letter-spacing:3px;">IMPOSTER</div><div class="logo-sub">IN PROGRESS</div></div>
+      <div class="rbadge">ROOM&nbsp;<span class="code" id="gm-code">----</span></div>
+    </div>
+
+    <!-- Eliminated banner (only shown if this player is out) -->
+    <div id="elim-banner" style="display:none;" class="elim-banner">
+      <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--txtd);margin-bottom:4px;">Spectator Mode</div>
+      <div style="font-family:var(--D);font-size:28px;letter-spacing:3px;color:var(--red);">☠ YOU WERE ELIMINATED</div>
+      <div style="font-size:11px;color:var(--txtd);margin-top:4px;">You can still watch the game — but can't speak or vote.</div>
     </div>
 
     <!-- Role card -->
-    <div id="role-card" style="margin-bottom:14px;"></div>
+    <div id="role-card" style="margin-bottom:12px;"></div>
 
     <!-- Speaker banner -->
-    <div id="speaker-area" style="display:none;margin-bottom:14px;">
-      <div class="speaker-banner">
-        <div class="sblabel">🎙&nbsp; Now Speaking</div>
-        <div class="sbname" id="speaker-name">—</div>
+    <div id="spk-area" style="display:none;margin-bottom:12px;">
+      <div class="sb">
+        <div class="sbl">🎙&nbsp;Now Speaking</div>
+        <div class="sbn" id="spk-name">—</div>
       </div>
     </div>
 
-    <!-- Speaker queue (order strip) -->
-    <div id="queue-area" style="margin-bottom:14px;display:none;">
-      <div class="card" style="padding:14px 18px;">
-        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Speaking Order (this round)</div>
-        <div class="queue-strip" id="queue-strip"></div>
+    <!-- Speaker queue -->
+    <div id="q-area" style="display:none;margin-bottom:12px;">
+      <div class="card" style="padding:12px 16px;">
+        <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:8px;">Speaking Order (this round)</div>
+        <div class="qstrip" id="q-strip"></div>
       </div>
     </div>
 
     <!-- Player list -->
-    <div class="card" style="margin-bottom:14px;">
+    <div class="card" style="margin-bottom:12px;">
       <div class="stitle">Players</div>
-      <div id="game-players" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="gm-players" style="display:flex;flex-direction:column;gap:7px;"></div>
     </div>
 
     <!-- Host controls -->
-    <div id="host-game-wrap" style="display:none;flex-direction:column;gap:8px;">
-      <button class="btn btn-cyan" id="btn-next-speaker">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
+    <div id="host-ctrl" style="display:none;flex-direction:column;gap:8px;">
+      <button class="btn b-cyan" id="btn-nxt">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
         Next Speaker
       </button>
-      <button class="btn btn-purple btn-sm" id="btn-start-vote">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <button class="btn b-purple b-sm" id="btn-vote-start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Start Vote
       </button>
-      <button class="btn btn-red btn-sm" id="btn-reveal">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <button class="btn b-red b-sm" id="btn-reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Reveal Imposter
       </button>
     </div>
   </div>
 
-  <!-- ═══════════════════ SCREEN: REVEAL ═══════════════════ -->
-  <div class="screen" id="screen-reveal">
-    <div style="text-align:center;margin-bottom:24px;">
-      <div class="logo" style="font-size:clamp(54px,13vw,80px);color:var(--red);text-shadow:0 0 40px rgba(255,59,92,.5);">BUSTED</div>
-      <div class="logo-sub">// the imposter has been exposed</div>
+  <!-- ════════════════ CREW WIN ════════════════ -->
+  <div class="screen" id="s-win">
+    <div style="text-align:center;margin-bottom:22px;">
+      <div class="logo win-glow" style="font-size:clamp(50px,13vw,78px);color:var(--green);">CREW WINS</div>
+      <div class="logo-sub">// imposter successfully identified</div>
     </div>
-    <div class="card red-top" style="margin-bottom:14px;">
-      <div class="stitle red">The Imposter Was</div>
-      <div class="reveal-hero" style="margin-bottom:16px;">
-        <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Agent Identified</div>
-        <div class="ri-name" id="reveal-name">—</div>
+    <div class="card c-green" style="margin-bottom:12px;">
+      <div class="stitle g">The Imposter Was</div>
+      <div style="text-align:center;background:rgba(0,232,126,.07);border:1px solid rgba(0,232,126,.25);border-radius:4px;padding:22px 16px;margin-bottom:14px;">
+        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Agent Caught</div>
+        <div style="font-family:var(--D);font-size:44px;letter-spacing:4px;color:var(--green);text-shadow:0 0 24px rgba(0,232,126,.5);" id="w-imp-name">—</div>
+        <div style="margin-top:6px;font-size:11px;color:var(--txtd);" id="w-vote-info"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="word-box">
-          <div class="wlabel">Secret Word</div>
-          <div class="wvalue" id="reveal-word">—</div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:13px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Secret Word</div>
+          <div style="font-family:var(--D);font-size:28px;letter-spacing:3px;color:var(--amber);" id="w-word">—</div>
         </div>
-        <div class="word-box">
-          <div class="wlabel">Imposter's Hint</div>
-          <div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;" id="reveal-hint">—</div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:13px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Imposter's Clue</div>
+          <div style="font-size:13px;color:var(--txt);line-height:1.5;font-style:italic;" id="w-hint">—</div>
         </div>
       </div>
     </div>
-    <div id="reveal-host-wrap" style="display:none;">
-      <button class="btn btn-green" id="btn-play-again">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
+    <div id="w-host-wrap" style="display:none;">
+      <button class="btn b-amber" id="btn-play-again">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
         Play Again
       </button>
     </div>
-    <div id="reveal-wait" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:2px;padding:12px;">
+    <div id="w-wait" style="display:none;text-align:center;font-size:11px;color:var(--txtd);letter-spacing:2px;padding:12px;">
       Waiting for host to start a new round…
+    </div>
+  </div>
+
+  <!-- ════════════════ REVEAL (imposter wins) ════════════════ -->
+  <div class="screen" id="s-reveal">
+    <div style="text-align:center;margin-bottom:22px;">
+      <div class="logo" style="font-size:clamp(50px,13vw,78px);color:var(--red);text-shadow:0 0 36px rgba(255,59,92,.5);">BUSTED</div>
+      <div class="logo-sub">// imposter revealed by host</div>
+    </div>
+    <div class="card c-red" style="margin-bottom:12px;">
+      <div class="stitle r">The Imposter Was</div>
+      <div style="text-align:center;background:rgba(255,59,92,.07);border:1px solid rgba(255,59,92,.25);border-radius:4px;padding:22px 16px;margin-bottom:14px;">
+        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Agent Identified</div>
+        <div style="font-family:var(--D);font-size:44px;letter-spacing:4px;color:var(--red);text-shadow:0 0 24px rgba(255,59,92,.5);" id="rv-name">—</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:13px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Secret Word</div>
+          <div style="font-family:var(--D);font-size:28px;letter-spacing:3px;color:var(--amber);" id="rv-word">—</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:13px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:5px;">Imposter's Clue</div>
+          <div style="font-size:13px;color:var(--txt);line-height:1.5;font-style:italic;" id="rv-hint">—</div>
+        </div>
+      </div>
+    </div>
+    <div id="rv-host-wrap" style="display:none;">
+      <button class="btn b-amber" id="btn-rv-again">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
+        Play Again
+      </button>
+    </div>
+    <div id="rv-wait" style="display:none;text-align:center;font-size:11px;color:var(--txtd);letter-spacing:2px;padding:12px;">
+      Waiting for host…
     </div>
   </div>
 
 </div><!-- /#app -->
 
-<!-- ═════════════════════════════════════════════
-     VOTING OVERLAY — shown over the game screen
-═════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════
+     VOTING OVERLAY
+════════════════════════════════════════════════════ -->
 <div class="overlay hidden" id="vote-overlay">
-  <div class="overlay-box">
+  <div class="obox" style="position:relative;">
+    <!-- purple top line -->
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--purple),transparent);border-radius:6px 6px 0 0;"></div>
 
-    <!-- Voting phase -->
-    <div id="vote-phase-voting">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <div style="font-family:var(--display);font-size:28px;letter-spacing:3px;color:var(--purple);">VOTE</div>
-        <div style="font-size:11px;letter-spacing:2px;color:var(--text-dim);">
-          <span id="vote-count-done">0</span>/<span id="vote-count-total">0</span> voted
-        </div>
+    <!-- ── VOTING PHASE ── -->
+    <div id="vp-voting">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-family:var(--D);font-size:26px;letter-spacing:3px;color:var(--purple);">VOTE</div>
+        <div style="font-size:11px;letter-spacing:1px;color:var(--txtd);"><span id="v-done">0</span>/<span id="v-total">0</span></div>
       </div>
-      <div style="font-size:11px;letter-spacing:1px;color:var(--text-dim);margin-bottom:14px;">
-        Who do you think is the Imposter?
+      <div style="font-size:11px;color:var(--txtd);letter-spacing:.5px;margin-bottom:12px;">Who is the Imposter?</div>
+      <div class="ptrack" style="margin-bottom:14px;"><div class="pfill" id="v-prog" style="width:0%"></div></div>
+      <div class="vgrid" id="v-grid" style="margin-bottom:12px;"></div>
+      <div id="v-locked-msg" style="display:none;text-align:center;font-size:12px;color:var(--txtd);letter-spacing:1px;padding:7px;">
+        ✓ Vote locked — waiting for others…
       </div>
-
-      <!-- Progress bar -->
-      <div class="vote-progress-track" style="margin-bottom:16px;">
-        <div class="vote-progress-fill" id="vote-progress" style="width:0%"></div>
+      <div id="v-spectate-msg" style="display:none;text-align:center;font-size:12px;color:rgba(255,59,92,.7);letter-spacing:1px;padding:7px;border:1px solid rgba(255,59,92,.2);border-radius:3px;">
+        ☠ You were eliminated — watching only
       </div>
-
-      <!-- Candidate grid -->
-      <div class="vote-grid" id="vote-grid" style="margin-bottom:16px;"></div>
-
-      <!-- "Waiting" msg after voting -->
-      <div id="vote-waiting-msg" style="display:none;text-align:center;font-size:12px;color:var(--text-dim);letter-spacing:1px;padding:8px;">
-        ✓ Your vote is locked. Waiting for others…
-      </div>
-
-      <!-- Host-only: end vote early -->
-      <div id="vote-host-end" style="display:none;">
-        <button class="btn btn-red btn-sm" id="btn-end-vote">End Vote Now</button>
+      <div id="v-host-end" style="display:none;margin-top:10px;">
+        <button class="btn b-red b-sm" id="btn-end-vote">End Vote Early</button>
       </div>
     </div>
 
-    <!-- Results phase -->
-    <div id="vote-phase-results" style="display:none;">
-      <div style="text-align:center;margin-bottom:18px;">
-        <div style="font-family:var(--display);font-size:30px;letter-spacing:3px;color:var(--purple);">RESULTS</div>
-        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-top:4px;" id="result-round-label">Round 1</div>
-      </div>
-
-      <!-- Most-voted highlight -->
-      <div id="result-leader-box" style="text-align:center;margin-bottom:18px;padding:14px;border-radius:4px;background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.3);">
-        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Most Votes</div>
-        <div style="font-family:var(--display);font-size:36px;letter-spacing:3px;color:var(--red);" id="result-leader-name">—</div>
-        <div style="font-size:11px;color:var(--text-dim);" id="result-leader-votes">— votes</div>
-      </div>
+    <!-- ── RESULTS PHASE ── -->
+    <div id="vp-results" style="display:none;">
+      <!-- Outcome banner inserted here dynamically -->
+      <div id="v-outcome-banner" style="margin-bottom:16px;"></div>
 
       <!-- Bar chart -->
-      <div id="result-bars" style="margin-bottom:18px;"></div>
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:8px;">Vote Count</div>
+      <div id="v-bars" style="margin-bottom:14px;"></div>
 
       <!-- Who voted for whom -->
-      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Who Voted For Whom</div>
-      <div id="vote-log" style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;"></div>
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--txtd);margin-bottom:8px;">Vote Log</div>
+      <div id="v-log" style="display:flex;flex-direction:column;gap:5px;margin-bottom:16px;"></div>
 
-      <!-- Host: close → resume game -->
-      <div id="result-host-close" style="display:none;">
-        <button class="btn btn-cyan" id="btn-close-vote">Resume Game</button>
+      <!-- Host: close OR crew-win: go to win screen -->
+      <div id="v-host-close" style="display:none;">
+        <button class="btn b-cyan" id="btn-close-vote">Resume Game</button>
       </div>
-      <div id="result-wait" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:1px;padding:8px;">
-        Waiting for host to close results…
+      <div id="v-wait-close" style="display:none;text-align:center;font-size:11px;color:var(--txtd);letter-spacing:1px;padding:8px;">
+        Waiting for host…
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════
-     JAVASCRIPT
-═══════════════════════════════════════ -->
+<!-- ══════════════════════ JS ══════════════════════ -->
 <script>
-/* ──────────────────────────────────────────
-   STATE
-─────────────────────────────────────────── */
-const S = {
-  socket:       null,
-  nickname:     '',
-  roomCode:     '',
-  isHost:       false,
-  myId:         '',
-  players:      [],         // [{id, nickname}]
-  hostId:       '',
-  speakerOrder: [],         // array of player IDs (shuffled)
-  speakerStep:  -1,         // current index
-  myRole:       null,
-  myVote:       null,       // targetId after voting
+/* ── State ── */
+const G = {
+  socket: null, nickname: '', roomCode: '', isHost: false, myId: '',
+  players: [], hostId: '', eliminated: [],
+  speakerOrder: [], speakerStep: -1,
+  myRole: null, myVote: null,
 };
 
-/* ──────────────────────────────────────────
-   SCREEN HELPERS
-─────────────────────────────────────────── */
+/* ── DOM helpers ── */
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function setErr(id, msg) { const el = document.getElementById(id); if (el) el.textContent = msg || ''; }
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function initial(name) { return (name || '?')[0].toUpperCase(); }
-function copyCode() { navigator.clipboard?.writeText(S.roomCode).catch(() => {}); }
+function err(id, msg) { const e = document.getElementById(id); if(e) e.textContent = msg||''; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function ini(n) { return (n||'?')[0].toUpperCase(); }
+function cpCode() { navigator.clipboard?.writeText(G.roomCode).catch(()=>{}); }
 
-/* ──────────────────────────────────────────
-   PLAYER LIST
-─────────────────────────────────────────── */
-function renderPlayers(containerId, players, hostId, speakerStep, speakerOrder) {
-  const c = document.getElementById(containerId);
+/* ── Render player list ── */
+function rPlayers(cid, players, hostId, speakerStep, speakerOrder, eliminated) {
+  const c = document.getElementById(cid);
   if (!c) return;
   c.innerHTML = '';
-
-  // currentSpeakerId from order
-  const currentSpeakerId = (speakerStep >= 0 && speakerOrder && speakerOrder.length)
-    ? speakerOrder[speakerStep] : null;
-
+  const spkId = (speakerStep >= 0 && speakerOrder?.length) ? speakerOrder[speakerStep] : null;
   players.forEach(p => {
-    const isSpeaker = p.id === currentSpeakerId;
-    const div = document.createElement('div');
-    div.className = 'player-item' + (isSpeaker ? ' is-speaker' : '');
-
+    const isElim = eliminated.includes(p.id);
+    const isSpk  = p.id === spkId;
+    const d = document.createElement('div');
+    d.className = 'pi' + (isSpk && !isElim ? ' spk' : '') + (isElim ? ' elim' : '');
     const tags = [];
-    if (p.id === hostId)     tags.push(`<span class="tag tag-host">HOST</span>`);
-    if (p.id === S.myId)     tags.push(`<span class="tag tag-you">YOU</span>`);
-    if (isSpeaker)           tags.push(`<span class="tag tag-speaking">🎙 SPEAKING</span>`);
-
-    div.innerHTML = `
-      <div class="avatar">${initial(p.nickname)}</div>
-      <div class="pname">${esc(p.nickname)}</div>
-      ${tags.join('')}
-    `;
-    c.appendChild(div);
+    if (p.id === hostId)    tags.push(`<span class="tag t-host">HOST</span>`);
+    if (p.id === G.myId)    tags.push(`<span class="tag t-you">YOU</span>`);
+    if (isSpk && !isElim)   tags.push(`<span class="tag t-spk">🎙 SPEAKING</span>`);
+    if (isElim)             tags.push(`<span class="tag t-elim">☠ OUT</span>`);
+    d.innerHTML = `<div class="av">${ini(p.nickname)}</div><div class="pname">${esc(p.nickname)}</div>${tags.join('')}`;
+    c.appendChild(d);
   });
 }
 
-/* ──────────────────────────────────────────
-   SPEAKER QUEUE STRIP
-─────────────────────────────────────────── */
-function renderQueue(order, step) {
-  const strip = document.getElementById('queue-strip');
-  const area  = document.getElementById('queue-area');
-  if (!strip || !order || order.length === 0) { if (area) area.style.display = 'none'; return; }
-
+/* ── Render speaker queue ── */
+function rQueue(order, step, eliminated) {
+  const strip = document.getElementById('q-strip');
+  const area  = document.getElementById('q-area');
+  if (!strip || !order?.length) { area && (area.style.display='none'); return; }
   area.style.display = 'block';
   strip.innerHTML = '';
   order.forEach((pid, i) => {
-    const player = S.players.find(p => p.id === pid);
-    const name   = player ? player.nickname : '?';
-    const chip   = document.createElement('div');
-    chip.className = 'queue-chip' +
-      (i === step ? ' current' : '') +
-      (i < step   ? ' done'    : '');
-    chip.textContent = (i === step ? '▶ ' : '') + name;
+    const p    = G.players.find(x => x.id === pid);
+    const name = p ? p.nickname : '?';
+    const isOut = eliminated.includes(pid);
+    const chip  = document.createElement('div');
+    chip.className = 'qchip' +
+      (isOut ? ' out' : i === step ? ' cur' : i < step ? ' done' : '');
+    chip.textContent = (i === step && !isOut ? '▶ ' : '') + name;
     strip.appendChild(chip);
   });
 }
 
-/* ──────────────────────────────────────────
-   ROLE CARD
-─────────────────────────────────────────── */
-function renderRoleCard(role, secret) {
+/* ── Render role card ── */
+function rRole(role, secret) {
   const c = document.getElementById('role-card');
   if (role === 'player') {
-    c.innerHTML = `
-      <div class="role-card crew">
-        <div class="rlabel">Your Role</div>
-        <div class="rname">CREW</div>
-        <div class="rdiv"></div>
-        <div class="rinstruct">Your secret word is</div>
-        <div class="secret-word">${esc(secret)}</div>
-        <div style="margin-top:10px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">Don't reveal it. Find the imposter.</div>
-      </div>`;
+    c.innerHTML = `<div class="rc crew"><div class="rl">Your Role</div><div class="rn">CREW</div><div class="rdiv"></div><div class="ri">Your secret word is</div><div class="sw">${esc(secret)}</div><div style="margin-top:9px;font-size:11px;color:var(--txtd);letter-spacing:1px;">Don't reveal it. Find the imposter.</div></div>`;
   } else {
-    c.innerHTML = `
-      <div class="role-card imposter">
-        <div class="rlabel">Your Role</div>
-        <div class="rname">IMPOSTER</div>
-        <div class="rdiv"></div>
-        <div class="rinstruct">Your only clue is</div>
-        <div class="secret-hint">"${esc(secret)}"</div>
-        <div style="margin-top:10px;font-size:11px;color:rgba(255,59,92,.7);letter-spacing:1px;">Blend in. Don't get caught.</div>
-      </div>`;
+    c.innerHTML = `<div class="rc imposter"><div class="rl">Your Role</div><div class="rn">IMPOSTER</div><div class="rdiv"></div><div class="ri">Your only clue is</div><div class="sh">"${esc(secret)}"</div><div style="margin-top:9px;font-size:11px;color:rgba(255,59,92,.7);letter-spacing:1px;">Blend in. Don't get caught.</div></div>`;
   }
 }
 
-/* ──────────────────────────────────────────
-   VOTING OVERLAY
-─────────────────────────────────────────── */
-function showVoteOverlay(players, hostId) {
-  S.myVote = null;
+/* ══════════ VOTING ══════════ */
+function openVoteOverlay(players, eliminated, hostId) {
+  G.myVote = null;
+  // Show voting phase
+  document.getElementById('vp-voting').style.display  = 'block';
+  document.getElementById('vp-results').style.display = 'none';
+  document.getElementById('v-locked-msg').style.display   = 'none';
+  document.getElementById('v-spectate-msg').style.display = 'none';
+  document.getElementById('v-host-end').style.display     = G.isHost ? 'block' : 'none';
+  setVProg(0, players.filter(p => !eliminated.includes(p.id)).length);
 
-  // Reset phases
-  document.getElementById('vote-phase-voting').style.display  = 'block';
-  document.getElementById('vote-phase-results').style.display = 'none';
-  document.getElementById('vote-waiting-msg').style.display   = 'none';
-  document.getElementById('vote-host-end').style.display      = S.isHost ? 'block' : 'none';
-  setVoteProgress(0, players.length);
+  const isElim = eliminated.includes(G.myId);
+  if (isElim) document.getElementById('v-spectate-msg').style.display = 'block';
 
-  // Build candidate grid
-  const grid = document.getElementById('vote-grid');
+  // Build candidate grid — active players only (not eliminated)
+  const grid = document.getElementById('v-grid');
   grid.innerHTML = '';
-  players.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'vote-card';
-    card.dataset.id = p.id;
-    card.innerHTML = `
-      <div class="vavatar">${initial(p.nickname)}</div>
-      <div class="vname">${esc(p.nickname)}${p.id === S.myId ? ' <span style="font-size:10px;color:var(--text-dim)">(you)</span>' : ''}</div>
-      <div class="vcount" id="vc-${p.id}">—</div>
-    `;
-    card.addEventListener('click', () => submitVote(p.id));
-    grid.appendChild(card);
+  players.filter(p => !eliminated.includes(p.id)).forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'vcard' + (isElim ? ' locked' : '');
+    d.dataset.id = p.id;
+    d.innerHTML = `<div class="va">${ini(p.nickname)}</div><div class="vn">${esc(p.nickname)}${p.id===G.myId?' <span style="font-size:9px;color:var(--txtd)">(you)</span>':''}</div><div class="vc" id="vc-${p.id}">—</div>`;
+    if (!isElim) d.addEventListener('click', () => castVote(p.id));
+    grid.appendChild(d);
   });
 
   document.getElementById('vote-overlay').classList.remove('hidden');
 }
 
-function setVoteProgress(done, total) {
-  document.getElementById('vote-count-done').textContent  = done;
-  document.getElementById('vote-count-total').textContent = total;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  document.getElementById('vote-progress').style.width = pct + '%';
+function setVProg(done, total) {
+  document.getElementById('v-done').textContent  = done;
+  document.getElementById('v-total').textContent = total;
+  document.getElementById('v-prog').style.width  = (total > 0 ? Math.round(done/total*100) : 0) + '%';
 }
 
-function updateVoteCounts(totals, voters, total) {
-  setVoteProgress(voters, total);
-  // Update count badges on cards (show live counts)
-  Object.entries(totals).forEach(([pid, count]) => {
+function liveUpdate({ totals, voters, total }) {
+  setVProg(voters, total);
+  Object.entries(totals).forEach(([pid, cnt]) => {
     const el = document.getElementById('vc-' + pid);
-    if (el) el.textContent = count > 0 ? count : '—';
+    if (el) el.textContent = cnt > 0 ? cnt : '—';
   });
 }
 
-function submitVote(targetId) {
-  if (S.myVote) return; // already voted
-  S.myVote = targetId;
-
-  // Visually lock all cards
-  document.querySelectorAll('.vote-card').forEach(c => {
-    c.classList.add('disabled');
-    if (c.dataset.id === targetId) c.classList.add('selected');
+function castVote(targetId) {
+  if (G.myVote) return;
+  G.myVote = targetId;
+  document.querySelectorAll('.vcard').forEach(c => {
+    c.classList.add('locked');
+    if (c.dataset.id === targetId) c.classList.add('sel');
   });
-
-  document.getElementById('vote-waiting-msg').style.display = 'block';
-
-  S.socket.emit('vote:submit', { targetId });
+  document.getElementById('v-locked-msg').style.display = 'block';
+  G.socket.emit('vote:submit', { targetId });
 }
 
-function showVoteResults({ totals, mostVotedIds, maxVotes, voteLog, players, round }) {
-  document.getElementById('vote-phase-voting').style.display  = 'none';
-  document.getElementById('vote-phase-results').style.display = 'block';
+/* ── Show vote results inside overlay ── */
+function showResults({ outcome, totals, topIds, maxVotes, voteLog, players, eliminated, accusedName, accusedId, word, hint, round }) {
+  document.getElementById('vp-voting').style.display  = 'none';
+  document.getElementById('vp-results').style.display = 'block';
 
-  document.getElementById('result-round-label').textContent = `Vote Round ${round}`;
+  // ── Outcome banner ──────────────────────────────────────────────────────
+  const ob = document.getElementById('v-outcome-banner');
+  if (outcome === 'tie') {
+    ob.innerHTML = `<div class="outcome-tie"><div style="font-family:var(--D);font-size:26px;letter-spacing:3px;color:var(--amber);">🤝 TIE</div><div style="font-size:11px;color:var(--txtd);margin-top:4px;letter-spacing:1px;">No majority — nobody eliminated. Game continues.</div></div>`;
+  } else if (outcome === 'eliminated') {
+    ob.innerHTML = `<div class="outcome-elim"><div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--txtd);margin-bottom:4px;">Eliminated</div><div style="font-family:var(--D);font-size:34px;letter-spacing:3px;color:var(--red);">☠ ${esc(accusedName)}</div><div style="font-size:11px;color:var(--txtd);margin-top:4px;">But they were innocent! Imposter is still out there.</div></div>`;
+  } else if (outcome === 'crewWin') {
+    ob.innerHTML = `<div class="outcome-win"><div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--txtd);margin-bottom:4px;">Imposter Caught!</div><div style="font-family:var(--D);font-size:34px;letter-spacing:3px;color:var(--green);text-shadow:0 0 20px rgba(0,232,126,.5);">🎉 ${esc(accusedName)}</div><div style="font-size:11px;color:var(--txtd);margin-top:4px;">Crew wins! The secret word was <strong style="color:var(--amber)">${esc(word||'')}</strong></div></div>`;
+  }
 
-  // Leader
-  const leaderNames = mostVotedIds
-    .map(id => players.find(p => p.id === id)?.nickname || '?')
-    .join(' & ');
-  document.getElementById('result-leader-name').textContent  = maxVotes > 0 ? leaderNames : 'No votes cast';
-  document.getElementById('result-leader-votes').textContent = maxVotes > 0 ? `${maxVotes} vote${maxVotes !== 1 ? 's' : ''}` : '';
-
-  // Bar chart
-  const barsEl = document.getElementById('result-bars');
-  barsEl.innerHTML = '';
+  // ── Bar chart ──────────────────────────────────────────────────────────
+  const bars = document.getElementById('v-bars');
+  bars.innerHTML = '';
   const maxV = Math.max(1, ...Object.values(totals));
-  players.forEach(p => {
-    const v       = totals[p.id] || 0;
-    const pct     = Math.max(0, Math.round((v / maxV) * 100));
-    const isLead  = mostVotedIds.includes(p.id) && maxVotes > 0;
-    const row = document.createElement('div');
-    row.className = 'result-bar-row';
+  const activePlrs = players.filter(p => !eliminated.includes(p.id));
+  activePlrs.forEach(p => {
+    const v    = totals[p.id] || 0;
+    const pct  = Math.max(0, Math.round(v / maxV * 100));
+    const lead = topIds.includes(p.id) && maxVotes > 0;
+    const row  = document.createElement('div');
+    row.className = 'rrow';
     row.innerHTML = `
-      <div class="result-bar-name" title="${esc(p.nickname)}">${esc(p.nickname)}</div>
-      <div class="result-bar-track">
-        <div class="result-bar-fill ${v === 0 ? 'zero' : isLead ? 'leader' : 'normal'}"
-             style="width:0%"
-             data-target="${v === 0 ? 0 : pct}">
-          ${v > 0 ? v : ''}
-        </div>
-      </div>
-    `;
-    barsEl.appendChild(row);
+      <div class="rname" title="${esc(p.nickname)}">${esc(p.nickname)}</div>
+      <div class="rtrack"><div class="rfill ${v===0?'zero':lead?'lead':'norm'}" style="width:0%" data-t="${v===0?0:pct}">${v>0?v:''}</div></div>`;
+    bars.appendChild(row);
   });
-
-  // Animate bars after a tiny delay
   setTimeout(() => {
-    document.querySelectorAll('.result-bar-fill').forEach(bar => {
-      bar.style.width = bar.dataset.target + '%';
-    });
-  }, 80);
+    document.querySelectorAll('.rfill').forEach(b => b.style.width = b.dataset.t + '%');
+  }, 60);
 
-  // Vote log
-  const logEl = document.getElementById('vote-log');
+  // ── Vote log ──────────────────────────────────────────────────────────
+  const logEl = document.getElementById('v-log');
   logEl.innerHTML = '';
-  if (voteLog.length === 0) {
-    logEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:8px;">Nobody submitted a vote.</div>';
+  if (!voteLog?.length) {
+    logEl.innerHTML = '<div style="font-size:12px;color:var(--txtd);text-align:center;padding:7px;">No votes submitted.</div>';
   } else {
-    voteLog.forEach(entry => {
-      const isMe     = entry.voterId === S.myId;
-      const votedOnMe = entry.targetId === S.myId;
-      const div = document.createElement('div');
-      div.className = 'vote-log-item' + (votedOnMe ? ' voted-on-me' : '');
-      div.innerHTML = `
-        <span class="vl-voter">${esc(entry.voterName)}${isMe ? ' <span style="color:var(--text-dim);font-size:10px">(you)</span>' : ''}</span>
-        <span class="vl-arrow">→</span>
-        <span class="vl-target">${esc(entry.targetName)}</span>
-        ${votedOnMe ? '<span style="font-size:10px;color:var(--red);margin-left:auto;">← you</span>' : ''}
-      `;
-      logEl.appendChild(div);
+    voteLog.forEach(e => {
+      const isMe    = e.voterId === G.myId;
+      const hitMe   = e.targetId === G.myId;
+      const d = document.createElement('div');
+      d.className = 'vli' + (hitMe ? ' hit' : '');
+      d.innerHTML = `<span class="vl-voter">${esc(e.voterName)}${isMe?' <span style="color:var(--txtd);font-size:9px">(you)</span>':''}</span><span class="vl-arrow">→</span><span class="vl-target">${esc(e.targetName)}</span>${hitMe?'<span style="font-size:9px;color:var(--red);margin-left:auto;">← you</span>':''}`;
+      logEl.appendChild(d);
     });
   }
 
-  // Host / wait controls
-  document.getElementById('result-host-close').style.display = S.isHost ? 'block' : 'none';
-  document.getElementById('result-wait').style.display       = S.isHost ? 'none' : 'block';
-}
+  // ── Controls ──────────────────────────────────────────────────────────
+  // For crewWin: host button navigates to win screen
+  // For tie/eliminated: host button resumes game
+  document.getElementById('v-host-close').style.display  = G.isHost ? 'block' : 'none';
+  document.getElementById('v-wait-close').style.display  = G.isHost ? 'none'  : 'block';
 
-/* ──────────────────────────────────────────
-   SOCKET INIT
-─────────────────────────────────────────── */
-function initSocket() {
-  if (S.socket) return;
-  S.socket = io();
-  const socket = S.socket;
-
-  socket.on('connect', () => { S.myId = socket.id; });
-
-  // ── Lobby update
-  socket.on('lobby:update', ({ players, hostId }) => {
-    S.players = players;
-    S.hostId  = hostId;
-    S.isHost  = hostId === S.myId;
-    renderPlayers('lobby-players', players, hostId, -1, []);
-    document.getElementById('host-start-wrap').style.display = S.isHost ? 'block' : 'none';
-  });
-
-  // ── Game started
-  socket.on('game:started', ({ role, secret, players, hostId, speakerOrder, speakerStep }) => {
-    S.players      = players;
-    S.hostId       = hostId;
-    S.isHost       = hostId === S.myId;
-    S.myRole       = role;
-    S.speakerOrder = speakerOrder;
-    S.speakerStep  = speakerStep;
-    S.myVote       = null;
-
-    document.getElementById('game-code').textContent = S.roomCode;
-    renderRoleCard(role, secret);
-    renderPlayers('game-players', players, hostId, speakerStep, speakerOrder);
-    renderQueue(speakerOrder, speakerStep);
-
-    document.getElementById('speaker-area').style.display = 'none';
-    const hgw = document.getElementById('host-game-wrap');
-    hgw.style.display = S.isHost ? 'flex' : 'none';
-    hgw.style.flexDirection = 'column';
-
-    show('screen-game');
-  });
-
-  // ── Speaker changed
-  socket.on('game:speaker', ({ speakerId, speakerName, speakerStep, speakerOrder }) => {
-    S.speakerOrder = speakerOrder;
-    S.speakerStep  = speakerStep;
-
-    document.getElementById('speaker-area').style.display = 'block';
-    document.getElementById('speaker-name').textContent   = speakerName;
-
-    renderPlayers('game-players', S.players, S.hostId, speakerStep, speakerOrder);
-    renderQueue(speakerOrder, speakerStep);
-  });
-
-  // ── Vote started
-  socket.on('vote:started', ({ players, hostId }) => {
-    S.players = players;
-    showVoteOverlay(players, hostId);
-  });
-
-  // ── Live vote count update
-  socket.on('vote:update', ({ totals, voters, total }) => {
-    updateVoteCounts(totals, voters, total);
-  });
-
-  // ── Vote results
-  socket.on('vote:results', (data) => {
-    showVoteResults(data);
-  });
-
-  // ── Vote closed → hide overlay, resume game
-  socket.on('vote:closed', () => {
-    document.getElementById('vote-overlay').classList.add('hidden');
-    S.myVote = null;
-  });
-
-  // ── Game reveal (imposter exposed)
-  socket.on('game:reveal', ({ imposterName, imposterId, word, hint }) => {
-    document.getElementById('vote-overlay').classList.add('hidden');
-    document.getElementById('reveal-name').textContent = imposterName;
-    document.getElementById('reveal-word').textContent = word;
-    document.getElementById('reveal-hint').textContent = hint;
-    document.getElementById('reveal-host-wrap').style.display = S.isHost ? 'block' : 'none';
-    document.getElementById('reveal-wait').style.display      = S.isHost ? 'none'  : 'block';
-    show('screen-reveal');
-  });
-
-  // ── Back to lobby
-  socket.on('game:backToLobby', () => {
-    document.getElementById('vote-overlay').classList.add('hidden');
-    S.myRole       = null;
-    S.myVote       = null;
-    S.speakerOrder = [];
-    S.speakerStep  = -1;
-    document.getElementById('lobby-code').textContent = S.roomCode;
-    show('screen-lobby');
-  });
-
-  socket.on('error:msg', msg => setErr('err-start', msg));
-}
-
-/* ──────────────────────────────────────────
-   BUTTON HANDLERS
-─────────────────────────────────────────── */
-
-// Create Room
-document.getElementById('btn-create').addEventListener('click', () => {
-  const nick = document.getElementById('create-nick').value.trim();
-  if (!nick) { setErr('err-create', 'Please enter a nickname.'); return; }
-  setErr('err-create', '');
-  const btn = document.getElementById('btn-create');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spin"></span> Creating…`;
-
-  initSocket();
-  S.nickname = nick;
-  S.socket.emit('room:create', { nickname: nick }, ({ success, roomCode, error }) => {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Create Room`;
-    if (!success) { setErr('err-create', error); return; }
-    S.roomCode = roomCode;
-    S.isHost   = true;
-    document.getElementById('lobby-code').textContent = roomCode;
-    show('screen-lobby');
-  });
-});
-
-// Join Room
-document.getElementById('btn-join').addEventListener('click', () => {
-  const nick = document.getElementById('join-nick').value.trim();
-  const code = document.getElementById('join-code').value.trim().toUpperCase();
-  if (!nick)           { setErr('err-join', 'Please enter a nickname.'); return; }
-  if (code.length < 4) { setErr('err-join', 'Room code must be 4 letters.'); return; }
-  setErr('err-join', '');
-  const btn = document.getElementById('btn-join');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spin"></span> Joining…`;
-
-  initSocket();
-  S.nickname = nick;
-  S.socket.emit('room:join', { nickname: nick, roomCode: code }, ({ success, error }) => {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Join Room`;
-    if (!success) { setErr('err-join', error); return; }
-    S.roomCode = code;
-    S.isHost   = false;
-    document.getElementById('lobby-code').textContent = code;
-    show('screen-lobby');
-  });
-});
-
-// Enter key on landing inputs
-['join-nick','join-code'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-join').click(); });
-});
-document.getElementById('create-nick').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('btn-create').click();
-});
-
-// Start Game
-document.getElementById('btn-start').addEventListener('click', () => {
-  setErr('err-start', '');
-  S.socket.emit('game:start');
-});
-
-// Next Speaker
-document.getElementById('btn-next-speaker').addEventListener('click', () => {
-  S.socket.emit('game:nextSpeaker');
-});
-
-// Start Vote
-document.getElementById('btn-start-vote').addEventListener('click', () => {
-  S.socket.emit('vote:start');
-});
-
-// End Vote Early
-document.getElementById('btn-end-vote').addEventListener('click', () => {
-  S.socket.emit('vote:end');
-});
-
-// Close vote results → resume game
-document.getElementById('btn-close-vote').addEventListener('click', () => {
-  S.socket.emit('vote:close');
-});
-
-// Reveal Imposter
-document.getElementById('btn-reveal').addEventListener('click', () => {
-  if (confirm('Reveal the Imposter now? This ends the round.')) {
-    S.socket.emit('game:reveal');
+  const closeBtn = document.getElementById('btn-close-vote');
+  if (outcome === 'crewWin') {
+    closeBtn.textContent = '🎉 See Win Screen';
+    closeBtn.className   = 'btn b-green';
+  } else {
+    closeBtn.textContent = 'Resume Game';
+    closeBtn.className   = 'btn b-cyan';
   }
+}
+
+/* ══════════ SOCKET ══════════ */
+function initSocket() {
+  if (G.socket) return;
+  G.socket = io();
+  const sk = G.socket;
+
+  sk.on('connect', () => { G.myId = sk.id; });
+
+  sk.on('lobby:update', ({ players, hostId }) => {
+    G.players = players; G.hostId = hostId; G.isHost = hostId === G.myId;
+    rPlayers('lb-players', players, hostId, -1, [], []);
+    document.getElementById('lb-host').style.display = G.isHost ? 'block' : 'none';
+  });
+
+  sk.on('game:started', ({ role, secret, players, hostId, eliminated, speakerOrder, speakerStep }) => {
+    G.myRole = role; G.players = players; G.hostId = hostId; G.isHost = hostId === G.myId;
+    G.eliminated = eliminated; G.speakerOrder = speakerOrder; G.speakerStep = speakerStep;
+    G.myVote = null;
+
+    document.getElementById('gm-code').textContent = G.roomCode;
+    rRole(role, secret);
+    rPlayers('gm-players', players, hostId, speakerStep, speakerOrder, eliminated);
+    rQueue(speakerOrder, speakerStep, eliminated);
+    document.getElementById('spk-area').style.display = 'none';
+    document.getElementById('elim-banner').style.display = 'none';
+
+    const hc = document.getElementById('host-ctrl');
+    hc.style.display = G.isHost ? 'flex' : 'none';
+    if (G.isHost) hc.style.flexDirection = 'column';
+    show('s-game');
+  });
+
+  sk.on('game:speaker', ({ speakerId, speakerName, speakerStep, speakerOrder }) => {
+    G.speakerOrder = speakerOrder; G.speakerStep = speakerStep;
+    document.getElementById('spk-area').style.display = 'block';
+    document.getElementById('spk-name').textContent   = speakerName;
+    rPlayers('gm-players', G.players, G.hostId, speakerStep, speakerOrder, G.eliminated);
+    rQueue(speakerOrder, speakerStep, G.eliminated);
+  });
+
+  sk.on('vote:started', ({ players, eliminated, hostId }) => {
+    G.players = players; G.eliminated = eliminated;
+    openVoteOverlay(players, eliminated, hostId);
+  });
+
+  sk.on('vote:update', data => liveUpdate(data));
+
+  sk.on('vote:results', data => {
+    // Update local eliminated list
+    if (data.eliminated) G.eliminated = data.eliminated;
+    showResults(data);
+  });
+
+  sk.on('vote:closed', ({ eliminated, speakerOrder, speakerStep, players }) => {
+    // Outcome was tie or eliminated — go back to game
+    G.eliminated  = eliminated || [];
+    G.speakerOrder = speakerOrder || [];
+    G.speakerStep  = speakerStep ?? -1;
+    if (players) G.players = players;
+
+    document.getElementById('vote-overlay').classList.add('hidden');
+    G.myVote = null;
+
+    // Update player list and queue with new eliminated state
+    rPlayers('gm-players', G.players, G.hostId, G.speakerStep, G.speakerOrder, G.eliminated);
+    rQueue(G.speakerOrder, G.speakerStep, G.eliminated);
+
+    // Show eliminated banner if this player was just eliminated
+    const amIOut = G.eliminated.includes(G.myId);
+    document.getElementById('elim-banner').style.display = amIOut ? 'block' : 'none';
+  });
+
+  // Host revealed imposter manually (crew didn't catch them via vote)
+  sk.on('game:reveal', ({ imposterName, imposterId, word, hint }) => {
+    document.getElementById('vote-overlay').classList.add('hidden');
+    document.getElementById('rv-name').textContent = imposterName;
+    document.getElementById('rv-word').textContent = word;
+    document.getElementById('rv-hint').textContent = hint;
+    document.getElementById('rv-host-wrap').style.display = G.isHost ? 'block' : 'none';
+    document.getElementById('rv-wait').style.display      = G.isHost ? 'none'  : 'block';
+    show('s-reveal');
+  });
+
+  // Crew win via vote — navigated here by host closing the result overlay
+  sk.on('game:crewWin', ({ accusedName, accusedId, word, hint, maxVotes }) => {
+    document.getElementById('w-imp-name').textContent = accusedName;
+    document.getElementById('w-word').textContent     = word;
+    document.getElementById('w-hint').textContent     = hint;
+    document.getElementById('w-vote-info').textContent = `Voted out with ${maxVotes} vote${maxVotes!==1?'s':''}`;
+    document.getElementById('w-host-wrap').style.display = G.isHost ? 'block' : 'none';
+    document.getElementById('w-wait').style.display      = G.isHost ? 'none'  : 'block';
+    document.getElementById('vote-overlay').classList.add('hidden');
+    show('s-win');
+  });
+
+  sk.on('game:backToLobby', () => {
+    document.getElementById('vote-overlay').classList.add('hidden');
+    G.myRole = null; G.myVote = null; G.eliminated = [];
+    G.speakerOrder = []; G.speakerStep = -1;
+    document.getElementById('lb-code').textContent = G.roomCode;
+    show('s-lobby');
+  });
+
+  sk.on('error:msg', msg => err('e-start', msg));
+}
+
+/* ══════════ BUTTON HANDLERS ══════════ */
+
+// Create
+document.getElementById('btn-create').addEventListener('click', () => {
+  const n = document.getElementById('c-nick').value.trim();
+  if (!n) { err('e-create','Please enter a nickname.'); return; }
+  err('e-create','');
+  const b = document.getElementById('btn-create');
+  b.disabled = true; b.innerHTML = `<span class="spin"></span> Creating…`;
+  initSocket();
+  G.nickname = n;
+  G.socket.emit('room:create', { nickname: n }, ({ success, roomCode, error }) => {
+    b.disabled = false;
+    b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Create Room`;
+    if (!success) { err('e-create', error); return; }
+    G.roomCode = roomCode; G.isHost = true;
+    document.getElementById('lb-code').textContent = roomCode;
+    show('s-lobby');
+  });
 });
 
-// Play Again
-document.getElementById('btn-play-again').addEventListener('click', () => {
-  S.socket.emit('game:playAgain');
+// Join
+document.getElementById('btn-join').addEventListener('click', () => {
+  const n = document.getElementById('j-nick').value.trim();
+  const c = document.getElementById('j-code').value.trim().toUpperCase();
+  if (!n)        { err('e-join','Please enter a nickname.'); return; }
+  if (c.length < 4) { err('e-join','Code must be 4 letters.'); return; }
+  err('e-join','');
+  const b = document.getElementById('btn-join');
+  b.disabled = true; b.innerHTML = `<span class="spin"></span> Joining…`;
+  initSocket();
+  G.nickname = n;
+  G.socket.emit('room:join', { nickname: n, roomCode: c }, ({ success, error }) => {
+    b.disabled = false;
+    b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Join Room`;
+    if (!success) { err('e-join', error); return; }
+    G.roomCode = c; G.isHost = false;
+    document.getElementById('lb-code').textContent = c;
+    show('s-lobby');
+  });
 });
+
+// Enter keys
+['j-nick','j-code'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-join').click(); }));
+document.getElementById('c-nick').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-create').click(); });
+
+// Start game
+document.getElementById('btn-start').addEventListener('click', () => { err('e-start',''); G.socket.emit('game:start'); });
+
+// Next speaker
+document.getElementById('btn-nxt').addEventListener('click', () => G.socket.emit('game:nextSpeaker'));
+
+// Start vote
+document.getElementById('btn-vote-start').addEventListener('click', () => G.socket.emit('vote:start'));
+
+// End vote early
+document.getElementById('btn-end-vote').addEventListener('click', () => G.socket.emit('vote:end'));
+
+// Close vote results
+document.getElementById('btn-close-vote').addEventListener('click', () => {
+  // Signal host to close — server decides what event to broadcast
+  G.socket.emit('vote:close');
+});
+
+// Reveal imposter
+document.getElementById('btn-reveal').addEventListener('click', () => {
+  if (confirm('Manually reveal the Imposter? This ends the round.')) G.socket.emit('game:reveal');
+});
+
+// Play again (win screen)
+document.getElementById('btn-play-again').addEventListener('click',  () => G.socket.emit('game:playAgain'));
+document.getElementById('btn-rv-again').addEventListener('click',    () => G.socket.emit('game:playAgain'));
 </script>
 </body>
 </html>
