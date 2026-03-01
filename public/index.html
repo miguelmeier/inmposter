@@ -4,20 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IMPOSTER — Spy Word Game</title>
-
-  <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Fonts: Bebas Neue (display) + JetBrains Mono (body/code) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
-
-  <!-- Socket.io client (served by our own server at runtime) -->
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* ── CSS Variables ─────────────────────────────────────────────────── */
     :root {
       --bg:        #080b10;
       --surface:   #0e1420;
@@ -29,450 +22,327 @@
       --cyan-dim:  #006070;
       --red:       #ff3b5c;
       --green:     #00e87e;
+      --purple:    #b060ff;
       --text:      #c8d8f0;
       --text-dim:  #4a607a;
-      --font-display: 'Bebas Neue', sans-serif;
-      --font-mono:    'JetBrains Mono', monospace;
+      --display:   'Bebas Neue', sans-serif;
+      --mono:      'JetBrains Mono', monospace;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: var(--font-mono);
+      font-family: var(--mono);
       min-height: 100vh;
       overflow-x: hidden;
-      position: relative;
     }
-
-    /* ── Grid Background ───────────────────────────────────────────────── */
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background-image:
         linear-gradient(var(--border) 1px, transparent 1px),
         linear-gradient(90deg, var(--border) 1px, transparent 1px);
       background-size: 48px 48px;
-      opacity: 0.35;
-      pointer-events: none;
-      z-index: 0;
+      opacity: 0.3; pointer-events: none; z-index: 0;
     }
-
-    /* ── Ambient Glow ──────────────────────────────────────────────────── */
     body::after {
       content: '';
       position: fixed;
-      width: 600px; height: 600px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(245,166,35,0.07) 0%, transparent 70%);
-      top: -200px; left: 50%;
-      transform: translateX(-50%);
-      pointer-events: none;
-      z-index: 0;
+      width: 700px; height: 700px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%);
+      top: -250px; left: 50%; transform: translateX(-50%);
+      pointer-events: none; z-index: 0;
     }
 
-    /* ── App wrapper ───────────────────────────────────────────────────── */
     #app {
-      position: relative;
-      z-index: 1;
+      position: relative; z-index: 1;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 16px 40px;
     }
 
-    /* ── Screens ───────────────────────────────────────────────────────── */
-    .screen { display: none; width: 100%; max-width: 480px; }
-    .screen.active { display: block; animation: screenIn 0.4s ease forwards; }
-
-    @keyframes screenIn {
-      from { opacity: 0; transform: translateY(18px); }
+    /* ── Screens ── */
+    .screen { display: none; width: 100%; max-width: 500px; }
+    .screen.active { display: block; animation: fadeUp .35s ease forwards; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Logo / Header ─────────────────────────────────────────────────── */
-    .logo {
-      font-family: var(--font-display);
-      font-size: clamp(64px, 16vw, 96px);
-      letter-spacing: 6px;
-      line-height: 0.9;
-      color: var(--amber);
-      text-shadow: 0 0 40px rgba(245,166,35,0.4);
-    }
-    .logo-sub {
-      font-size: 11px;
-      letter-spacing: 5px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      margin-top: 6px;
-    }
+    /* ── Logo ── */
+    .logo { font-family: var(--display); letter-spacing: 6px; color: var(--amber); text-shadow: 0 0 40px rgba(245,166,35,.4); line-height: .9; }
+    .logo-sub { font-size: 10px; letter-spacing: 5px; color: var(--text-dim); text-transform: uppercase; margin-top: 6px; }
 
-    /* ── Card ──────────────────────────────────────────────────────────── */
+    /* ── Card ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 28px;
+      padding: 24px;
       position: relative;
     }
     .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, transparent, var(--amber), transparent);
       border-radius: 4px 4px 0 0;
     }
+    .card.cyan-top::before { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+    .card.red-top::before  { background: linear-gradient(90deg, transparent, var(--red), transparent); }
 
-    /* ── Section title ─────────────────────────────────────────────────── */
-    .section-title {
-      font-family: var(--font-display);
-      font-size: 22px;
-      letter-spacing: 3px;
-      color: var(--cyan);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    /* ── Section title ── */
+    .stitle {
+      font-family: var(--display); font-size: 20px; letter-spacing: 3px;
+      color: var(--cyan); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .section-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
+    .stitle::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .stitle.amber { color: var(--amber); }
+    .stitle.red   { color: var(--red); }
 
-    /* ── Input ─────────────────────────────────────────────────────────── */
+    /* ── Input ── */
     .inp {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 14px;
-      padding: 12px 14px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 3px;
+      color: var(--text); font-family: var(--mono); font-size: 14px;
+      padding: 11px 14px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
     }
-    .inp:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 3px rgba(245,166,35,0.12);
-    }
+    .inp:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,166,35,.12); }
     .inp::placeholder { color: var(--text-dim); }
-    .inp.uppercase { text-transform: uppercase; letter-spacing: 4px; }
+    .inp.code-input { text-transform: uppercase; letter-spacing: 6px; font-size: 18px; text-align: center; }
+    label { display: block; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
 
-    label {
-      display: block;
-      font-size: 10px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-    }
-
-    /* ── Buttons ───────────────────────────────────────────────────────── */
+    /* ── Buttons ── */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-family: var(--font-display);
-      letter-spacing: 3px;
-      font-size: 18px;
-      padding: 14px 28px;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--display); letter-spacing: 2px; font-size: 17px;
+      padding: 13px 24px; border: none; border-radius: 3px;
+      cursor: pointer; transition: transform .15s, box-shadow .2s, opacity .2s;
       width: 100%;
     }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    .btn-amber {
-      background: var(--amber);
-      color: #000;
-      box-shadow: 0 4px 24px rgba(245,166,35,0.3);
-    }
-    .btn-amber:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(245,166,35,0.55); }
-
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-amber { background: var(--amber); color: #000; box-shadow: 0 4px 20px rgba(245,166,35,.3); }
+    .btn-amber:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(245,166,35,.55); }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-ghost:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
+    .btn-cyan { background: var(--cyan); color: #000; box-shadow: 0 4px 20px rgba(0,229,255,.25); }
+    .btn-cyan:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(0,229,255,.5); }
+    .btn-red { background: var(--red); color: #fff; box-shadow: 0 4px 20px rgba(255,59,92,.25); }
+    .btn-red:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(255,59,92,.5); }
+    .btn-green { background: var(--green); color: #000; box-shadow: 0 4px 20px rgba(0,232,126,.25); }
+    .btn-green:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(0,232,126,.5); }
+    .btn-purple { background: var(--purple); color: #fff; box-shadow: 0 4px 20px rgba(176,96,255,.25); }
+    .btn-purple:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(176,96,255,.5); }
+    .btn-sm { font-size: 13px; letter-spacing: 1px; padding: 9px 16px; }
 
-    .btn-cyan {
-      background: var(--cyan);
-      color: #000;
-      box-shadow: 0 4px 24px rgba(0,229,255,0.25);
-    }
-    .btn-cyan:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(0,229,255,0.5); }
-
-    .btn-red {
-      background: var(--red);
-      color: #fff;
-      box-shadow: 0 4px 24px rgba(255,59,92,0.25);
-    }
-    .btn-red:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(255,59,92,0.5); }
-
-    .btn-green {
-      background: var(--green);
-      color: #000;
-      box-shadow: 0 4px 24px rgba(0,232,126,0.25);
-    }
-    .btn-green:hover:not(:disabled) { box-shadow: 0 4px 32px rgba(0,232,126,0.5); }
-
-    .btn-sm {
-      font-size: 13px;
-      letter-spacing: 2px;
-      padding: 9px 18px;
-    }
-
-    /* ── Room code badge ───────────────────────────────────────────────── */
+    /* ── Room badge ── */
     .room-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 8px 14px;
-      font-size: 12px;
-      letter-spacing: 2px;
-      color: var(--text-dim);
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; padding: 7px 13px;
+      font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
     }
-    .room-badge span {
-      font-family: var(--font-display);
-      font-size: 22px;
-      letter-spacing: 6px;
-      color: var(--amber);
-    }
+    .room-badge .code { font-family: var(--display); font-size: 20px; letter-spacing: 6px; color: var(--amber); }
 
-    /* ── Player list ───────────────────────────────────────────────────── */
-    .player-list { display: flex; flex-direction: column; gap: 8px; }
+    /* ── Player item ── */
     .player-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 10px 14px;
-      transition: border-color 0.2s;
-      animation: slideIn 0.3s ease forwards;
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; padding: 10px 14px;
+      transition: border-color .2s, box-shadow .2s;
+      animation: slideIn .25s ease forwards;
     }
     @keyframes slideIn {
-      from { opacity: 0; transform: translateX(-12px); }
+      from { opacity: 0; transform: translateX(-10px); }
       to   { opacity: 1; transform: translateX(0); }
     }
-    .player-item.speaker {
+    .player-item.is-speaker {
       border-color: var(--cyan);
-      box-shadow: 0 0 0 1px var(--cyan), 0 4px 20px rgba(0,229,255,0.15);
+      box-shadow: 0 0 0 1px var(--cyan), 0 4px 18px rgba(0,229,255,.15);
     }
-    .player-avatar {
-      width: 34px; height: 34px;
-      border-radius: 3px;
+    .player-item.is-voted {
+      border-color: var(--red);
+      box-shadow: 0 0 0 1px rgba(255,59,92,.4);
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 3px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display);
-      font-size: 18px;
-      background: var(--border);
-      color: var(--amber);
-      flex-shrink: 0;
+      font-family: var(--display); font-size: 17px;
+      background: var(--border); color: var(--amber);
     }
-    .player-name { font-size: 13px; font-weight: 500; flex: 1; }
-    .player-badge {
-      font-size: 9px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      padding: 3px 7px;
-      border-radius: 2px;
+    .pname { font-size: 13px; font-weight: 500; flex: 1; }
+    .tag {
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 3px 7px; border-radius: 2px;
     }
-    .badge-host    { background: rgba(245,166,35,0.15); color: var(--amber); border: 1px solid var(--amber-dim); }
-    .badge-you     { background: rgba(0,229,255,0.1); color: var(--cyan); border: 1px solid var(--cyan-dim); }
-    .badge-speaker { background: rgba(0,229,255,0.2); color: var(--cyan); border: 1px solid var(--cyan); }
+    .tag-host     { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid var(--amber-dim); }
+    .tag-you      { background: rgba(0,229,255,.1);  color: var(--cyan);  border: 1px solid var(--cyan-dim); }
+    .tag-speaking { background: rgba(0,229,255,.18); color: var(--cyan);  border: 1px solid var(--cyan); }
 
-    /* ── Role card ─────────────────────────────────────────────────────── */
-    .role-card {
-      text-align: center;
-      border-radius: 4px;
-      padding: 32px 24px;
+    /* ── Role card ── */
+    .role-card { border-radius: 4px; padding: 28px 20px; text-align: center; position: relative; overflow: hidden; }
+    .role-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,.035), transparent 60%); }
+    .role-card.crew     { background: linear-gradient(135deg, #0a1a0e, #0e2016); border: 1px solid #1a4025; }
+    .role-card.imposter { background: linear-gradient(135deg, #1a060a, #220d10); border: 1px solid #4a1020; }
+    .rlabel { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+    .rname  { font-family: var(--display); font-size: 52px; letter-spacing: 4px; line-height: 1; }
+    .crew .rname     { color: var(--green); text-shadow: 0 0 28px rgba(0,232,126,.4); }
+    .imposter .rname { color: var(--red);   text-shadow: 0 0 28px rgba(255,59,92,.4); }
+    .rdiv { width: 40px; height: 2px; margin: 14px auto; }
+    .crew .rdiv     { background: var(--green); }
+    .imposter .rdiv { background: var(--red); }
+    .rinstruct { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+    .secret-word { font-family: var(--display); font-size: 38px; letter-spacing: 4px; color: var(--amber); text-shadow: 0 0 18px rgba(245,166,35,.5); }
+    .secret-hint { font-size: 14px; color: var(--text); line-height: 1.7; font-style: italic; }
+
+    /* ── Speaker banner ── */
+    .speaker-banner {
+      text-align: center; padding: 14px 16px; border-radius: 3px;
+      background: rgba(0,229,255,.07); border: 1px solid rgba(0,229,255,.3);
+      animation: glowPulse 2s ease infinite;
+    }
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,.15); }
+      50%      { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+    }
+    .sblabel { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--text-dim); }
+    .sbname  { font-family: var(--display); font-size: 30px; letter-spacing: 3px; color: var(--cyan); }
+
+    /* ── Speaker queue strip ── */
+    .queue-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+    .queue-chip {
+      padding: 4px 10px; border-radius: 2px; font-size: 11px; letter-spacing: 1px;
+      border: 1px solid var(--border); color: var(--text-dim); background: var(--surface2);
+      transition: all .2s;
+    }
+    .queue-chip.current { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,.1); font-weight: 700; }
+    .queue-chip.done    { opacity: .35; text-decoration: line-through; }
+
+    /* ── Divider ── */
+    .divider { display: flex; align-items: center; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 2px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Error ── */
+    .err { font-size: 12px; color: var(--red); letter-spacing: .5px; margin-top: 5px; min-height: 17px; }
+
+    /* ── Spinner ── */
+    .spin { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.25); border-top-color: #000; border-radius: 50%; animation: rot .6s linear infinite; display: inline-block; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════════════════════════
+       VOTING OVERLAY
+    ══════════════════════════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(8,11,16,.92);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      animation: fadeIn .25s ease forwards;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .overlay.hidden { display: none; }
+    .overlay-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 28px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
       position: relative;
-      overflow: hidden;
+      animation: popUp .3s cubic-bezier(.34,1.56,.64,1) forwards;
     }
-    .role-card.player-card {
-      background: linear-gradient(135deg, #0a1a0e, #0e2016);
-      border: 1px solid #1a3d22;
+    @keyframes popUp {
+      from { opacity: 0; transform: scale(.92) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
     }
-    .role-card.imposter-card {
-      background: linear-gradient(135deg, #1a060a, #200e10);
+    .overlay-box::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--purple), transparent);
+      border-radius: 6px 6px 0 0;
+    }
+
+    /* Vote target cards */
+    .vote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (max-width: 400px) { .vote-grid { grid-template-columns: 1fr; } }
+    .vote-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 14px 12px; cursor: pointer;
+      text-align: center; transition: all .18s;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .vote-card:hover:not(.disabled):not(.selected) {
+      border-color: var(--purple); background: rgba(176,96,255,.07);
+      transform: translateY(-2px);
+    }
+    .vote-card.selected {
+      border-color: var(--purple);
+      background: rgba(176,96,255,.15);
+      box-shadow: 0 0 0 1px var(--purple), 0 4px 16px rgba(176,96,255,.2);
+    }
+    .vote-card.disabled { opacity: .45; cursor: not-allowed; }
+    .vote-card .vavatar {
+      width: 40px; height: 40px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 22px;
+      background: var(--border); color: var(--amber);
+    }
+    .vote-card .vname { font-size: 13px; font-weight: 500; }
+    .vote-card .vcount {
+      font-family: var(--display); font-size: 28px; color: var(--red);
+      min-height: 34px;
+    }
+
+    /* Vote progress bar */
+    .vote-progress-track {
+      height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+    }
+    .vote-progress-fill {
+      height: 100%; background: var(--purple);
+      border-radius: 2px; transition: width .4s ease;
+    }
+
+    /* ── Results overlay ── */
+    .result-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .result-bar-name { width: 90px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+    .result-bar-track { flex: 1; height: 24px; background: var(--surface2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+    .result-bar-fill {
+      height: 100%; border-radius: 3px;
+      display: flex; align-items: center; padding-left: 8px;
+      font-family: var(--display); font-size: 16px; color: #000;
+      transition: width 1s cubic-bezier(.22,1,.36,1);
+      min-width: 0;
+    }
+    .result-bar-fill.leader { background: var(--red); }
+    .result-bar-fill.normal { background: rgba(255,255,255,.18); }
+    .result-bar-fill.zero   { background: var(--border); width: 6px !important; }
+
+    /* vote log */
+    .vote-log-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 3px;
+      background: var(--surface2); border: 1px solid var(--border);
+      font-size: 12px;
+      animation: slideIn .25s ease forwards;
+    }
+    .vl-arrow { color: var(--text-dim); }
+    .vl-voter  { color: var(--text); }
+    .vl-target { color: var(--red); font-weight: 600; }
+    .voted-on-me { border-color: rgba(255,59,92,.4); background: rgba(255,59,92,.06); }
+
+    /* ── Reveal screen ── */
+    .reveal-hero {
+      text-align: center; border-radius: 4px; padding: 28px 20px;
+      background: linear-gradient(135deg, #1a060a, #220d10);
       border: 1px solid #4a1020;
     }
-    .role-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 60%);
-    }
-    .role-label {
-      font-family: var(--font-display);
-      font-size: 13px;
-      letter-spacing: 5px;
-      margin-bottom: 8px;
-    }
-    .role-name {
-      font-family: var(--font-display);
-      font-size: 52px;
-      letter-spacing: 4px;
-      line-height: 1;
-    }
-    .role-card.player-card .role-name { color: var(--green); text-shadow: 0 0 30px rgba(0,232,126,0.4); }
-    .role-card.imposter-card .role-name { color: var(--red); text-shadow: 0 0 30px rgba(255,59,92,0.4); }
-    .role-divider {
-      width: 40px; height: 2px;
-      margin: 16px auto;
-    }
-    .player-card .role-divider { background: var(--green); }
-    .imposter-card .role-divider { background: var(--red); }
-    .role-instruction {
-      font-size: 10px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 12px;
-    }
-    .secret-word {
-      font-family: var(--font-display);
-      font-size: 40px;
-      letter-spacing: 4px;
-      color: var(--amber);
-      text-shadow: 0 0 20px rgba(245,166,35,0.5);
-    }
-    .secret-hint {
-      font-size: 14px;
-      color: var(--text);
-      line-height: 1.7;
-      font-style: italic;
-    }
+    .ri-name { font-family: var(--display); font-size: 46px; letter-spacing: 4px; color: var(--red); text-shadow: 0 0 28px rgba(255,59,92,.5); }
+    .word-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 14px; text-align: center; }
+    .word-box .wlabel { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+    .word-box .wvalue { font-family: var(--display); font-size: 30px; letter-spacing: 3px; color: var(--amber); }
 
-    /* ── Speaker announcement banner ───────────────────────────────────── */
-    .speaker-banner {
-      text-align: center;
-      padding: 16px;
-      border-radius: 3px;
-      background: rgba(0,229,255,0.08);
-      border: 1px solid var(--cyan-dim);
-      animation: pulse 1.5s ease infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.2); }
-      50%       { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
-    }
-    .speaker-banner .speaker-icon { font-size: 24px; margin-bottom: 4px; }
-    .speaker-banner .speaker-label {
-      font-size: 10px;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-    }
-    .speaker-banner .speaker-name {
-      font-family: var(--font-display);
-      font-size: 32px;
-      letter-spacing: 3px;
-      color: var(--cyan);
-    }
-
-    /* ── Reveal card ───────────────────────────────────────────────────── */
-    .reveal-imposter {
-      text-align: center;
-      background: linear-gradient(135deg, #1a060a, #200e10);
-      border: 1px solid #ff3b5c44;
-      border-radius: 4px;
-      padding: 28px 20px;
-    }
-    .reveal-imposter .ri-label {
-      font-size: 10px;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-    .reveal-imposter .ri-name {
-      font-family: var(--font-display);
-      font-size: 48px;
-      letter-spacing: 4px;
-      color: var(--red);
-      text-shadow: 0 0 30px rgba(255,59,92,0.5);
-    }
-    .word-reveal {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 16px;
-      text-align: center;
-    }
-    .word-reveal .wr-label {
-      font-size: 10px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-    }
-    .word-reveal .wr-value {
-      font-family: var(--font-display);
-      font-size: 32px;
-      letter-spacing: 4px;
-      color: var(--amber);
-    }
-
-    /* ── Error msg ─────────────────────────────────────────────────────── */
-    .error-msg {
-      font-size: 12px;
-      color: var(--red);
-      letter-spacing: 0.5px;
-      margin-top: 6px;
-      min-height: 18px;
-    }
-
-    /* ── Divider ───────────────────────────────────────────────────────── */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--text-dim);
-      font-size: 11px;
-      letter-spacing: 2px;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    /* ── Utility ───────────────────────────────────────────────────────── */
-    .gap-3 { gap: 12px; }
-    .gap-4 { gap: 16px; }
-    .gap-5 { gap: 20px; }
-
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid rgba(0,0,0,0.3);
-      border-top-color: #000;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Scrollbar ─────────────────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: var(--surface); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   </style>
@@ -480,449 +350,678 @@
 <body>
 <div id="app">
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       SCREEN 1: LANDING
-  ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════ SCREEN: LANDING ═══════════════════ -->
   <div class="screen active" id="screen-landing">
-    <div style="text-align:center;margin-bottom:40px;">
-      <div class="logo">IMPOSTER</div>
+    <div style="text-align:center;margin-bottom:36px;">
+      <div class="logo" style="font-size:clamp(60px,15vw,92px);">IMPOSTER</div>
       <div class="logo-sub">// multiplayer spy word game</div>
     </div>
 
     <div class="card" style="display:flex;flex-direction:column;gap:16px;">
-      <!-- Create Room -->
       <div>
-        <div class="section-title">Create</div>
+        <div class="stitle amber">Create Room</div>
         <div style="margin-bottom:12px;">
-          <label>Your Nickname</label>
-          <input id="create-nickname" class="inp" type="text" placeholder="Enter your name..." maxlength="16" autocomplete="off" />
+          <label>Nickname</label>
+          <input id="create-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" />
         </div>
         <button class="btn btn-amber" id="btn-create">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           Create Room
         </button>
-        <div class="error-msg" id="create-error"></div>
+        <div class="err" id="err-create"></div>
       </div>
 
       <div class="divider">OR</div>
 
-      <!-- Join Room -->
       <div>
-        <div class="section-title">Join</div>
+        <div class="stitle">Join Room</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
           <div>
-            <label>Your Nickname</label>
-            <input id="join-nickname" class="inp" type="text" placeholder="Enter your name..." maxlength="16" autocomplete="off" />
+            <label>Nickname</label>
+            <input id="join-nick" class="inp" placeholder="Your name…" maxlength="16" autocomplete="off" />
           </div>
           <div>
             <label>Room Code</label>
-            <input id="join-code" class="inp uppercase" type="text" placeholder="ABCD" maxlength="4" autocomplete="off" />
+            <input id="join-code" class="inp code-input" placeholder="ABCD" maxlength="4" autocomplete="off" />
           </div>
         </div>
         <button class="btn btn-ghost" id="btn-join">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           Join Room
         </button>
-        <div class="error-msg" id="join-error"></div>
+        <div class="err" id="err-join"></div>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       SCREEN 2: LOBBY
-  ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════ SCREEN: LOBBY ═══════════════════ -->
   <div class="screen" id="screen-lobby">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;">
       <div>
-        <div class="logo" style="font-size:42px;letter-spacing:4px;">IMPOSTER</div>
+        <div class="logo" style="font-size:40px;letter-spacing:4px;">IMPOSTER</div>
         <div class="logo-sub">LOBBY</div>
       </div>
       <div class="room-badge">
-        ROOM&nbsp;<span id="lobby-code">----</span>
-        <button onclick="copyRoomCode()" title="Copy code" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:2px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        ROOM&nbsp;<span class="code" id="lobby-code">----</span>
+        <button onclick="copyCode()" title="Copy" style="background:none;border:none;cursor:pointer;color:var(--text-dim);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title">Players</div>
-      <div class="player-list" id="lobby-players"></div>
-      <div style="margin-top:14px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">
-        Waiting for host to start — share the room code with friends
-      </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="stitle">Players</div>
+      <div id="lobby-players" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">Share the room code with friends.</div>
     </div>
-
-    <!-- Host-only start button -->
-    <div id="host-start-area" style="display:none;">
+    <div id="host-start-wrap" style="display:none;">
       <button class="btn btn-amber" id="btn-start">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Start Game
       </button>
-      <div class="error-msg" id="start-error"></div>
+      <div class="err" id="err-start"></div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       SCREEN 3: GAME
-  ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════ SCREEN: GAME ═══════════════════ -->
   <div class="screen" id="screen-game">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px;">
       <div>
-        <div class="logo" style="font-size:36px;letter-spacing:3px;">IMPOSTER</div>
-        <div class="logo-sub">GAME IN PROGRESS</div>
+        <div class="logo" style="font-size:34px;letter-spacing:3px;">IMPOSTER</div>
+        <div class="logo-sub">IN PROGRESS</div>
       </div>
-      <div class="room-badge">
-        ROOM&nbsp;<span id="game-code">----</span>
-      </div>
+      <div class="room-badge">ROOM&nbsp;<span class="code" id="game-code">----</span></div>
     </div>
 
     <!-- Role card -->
-    <div id="role-card-container" style="margin-bottom:16px;"></div>
+    <div id="role-card" style="margin-bottom:14px;"></div>
 
     <!-- Speaker banner -->
-    <div id="speaker-area" style="margin-bottom:16px;display:none;">
+    <div id="speaker-area" style="display:none;margin-bottom:14px;">
       <div class="speaker-banner">
-        <div class="speaker-icon">🎙️</div>
-        <div class="speaker-label">Now speaking</div>
-        <div class="speaker-name" id="speaker-name-display">—</div>
+        <div class="sblabel">🎙&nbsp; Now Speaking</div>
+        <div class="sbname" id="speaker-name">—</div>
       </div>
     </div>
 
-    <!-- Player list during game -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title">Players</div>
-      <div class="player-list" id="game-players"></div>
+    <!-- Speaker queue (order strip) -->
+    <div id="queue-area" style="margin-bottom:14px;display:none;">
+      <div class="card" style="padding:14px 18px;">
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Speaking Order (this round)</div>
+        <div class="queue-strip" id="queue-strip"></div>
+      </div>
+    </div>
+
+    <!-- Player list -->
+    <div class="card" style="margin-bottom:14px;">
+      <div class="stitle">Players</div>
+      <div id="game-players" style="display:flex;flex-direction:column;gap:8px;"></div>
     </div>
 
     <!-- Host controls -->
-    <div id="host-game-controls" style="display:none;display:flex;flex-direction:column;gap:10px;">
+    <div id="host-game-wrap" style="display:none;flex-direction:column;gap:8px;">
       <button class="btn btn-cyan" id="btn-next-speaker">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
         Next Speaker
       </button>
+      <button class="btn btn-purple btn-sm" id="btn-start-vote">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Start Vote
+      </button>
       <button class="btn btn-red btn-sm" id="btn-reveal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Reveal Imposter
       </button>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       SCREEN 4: REVEAL
-  ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════ SCREEN: REVEAL ═══════════════════ -->
   <div class="screen" id="screen-reveal">
-    <div style="text-align:center;margin-bottom:28px;">
-      <div class="logo" style="color:var(--red);text-shadow:0 0 40px rgba(255,59,92,0.5);">REVEALED</div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="logo" style="font-size:clamp(54px,13vw,80px);color:var(--red);text-shadow:0 0 40px rgba(255,59,92,.5);">BUSTED</div>
       <div class="logo-sub">// the imposter has been exposed</div>
     </div>
-
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title" style="color:var(--red);">The Imposter Was</div>
-      <div class="reveal-imposter" style="margin-bottom:16px;">
-        <div class="ri-label">Agent Identified</div>
-        <div class="ri-name" id="reveal-imposter-name">—</div>
+    <div class="card red-top" style="margin-bottom:14px;">
+      <div class="stitle red">The Imposter Was</div>
+      <div class="reveal-hero" style="margin-bottom:16px;">
+        <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Agent Identified</div>
+        <div class="ri-name" id="reveal-name">—</div>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="word-reveal">
-          <div class="wr-label">Secret Word</div>
-          <div class="wr-value" id="reveal-word">—</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="word-box">
+          <div class="wlabel">Secret Word</div>
+          <div class="wvalue" id="reveal-word">—</div>
         </div>
-        <div class="word-reveal">
-          <div class="wr-label">Imposter's Hint</div>
-          <div class="wr-value" style="font-size:14px;font-family:var(--font-mono);color:var(--text);padding-top:4px;" id="reveal-hint">—</div>
+        <div class="word-box">
+          <div class="wlabel">Imposter's Hint</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;" id="reveal-hint">—</div>
         </div>
       </div>
     </div>
-
-    <div id="host-reveal-controls" style="display:none;">
+    <div id="reveal-host-wrap" style="display:none;">
       <button class="btn btn-green" id="btn-play-again">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.38"/></svg>
         Play Again
       </button>
     </div>
-    <div id="reveal-waiting" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:2px;padding:12px;">
-      Waiting for host to start a new round...
+    <div id="reveal-wait" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:2px;padding:12px;">
+      Waiting for host to start a new round…
     </div>
   </div>
 
 </div><!-- /#app -->
 
-<!-- =====================================================================
+<!-- ═════════════════════════════════════════════
+     VOTING OVERLAY — shown over the game screen
+═════════════════════════════════════════════ -->
+<div class="overlay hidden" id="vote-overlay">
+  <div class="overlay-box">
+
+    <!-- Voting phase -->
+    <div id="vote-phase-voting">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-family:var(--display);font-size:28px;letter-spacing:3px;color:var(--purple);">VOTE</div>
+        <div style="font-size:11px;letter-spacing:2px;color:var(--text-dim);">
+          <span id="vote-count-done">0</span>/<span id="vote-count-total">0</span> voted
+        </div>
+      </div>
+      <div style="font-size:11px;letter-spacing:1px;color:var(--text-dim);margin-bottom:14px;">
+        Who do you think is the Imposter?
+      </div>
+
+      <!-- Progress bar -->
+      <div class="vote-progress-track" style="margin-bottom:16px;">
+        <div class="vote-progress-fill" id="vote-progress" style="width:0%"></div>
+      </div>
+
+      <!-- Candidate grid -->
+      <div class="vote-grid" id="vote-grid" style="margin-bottom:16px;"></div>
+
+      <!-- "Waiting" msg after voting -->
+      <div id="vote-waiting-msg" style="display:none;text-align:center;font-size:12px;color:var(--text-dim);letter-spacing:1px;padding:8px;">
+        ✓ Your vote is locked. Waiting for others…
+      </div>
+
+      <!-- Host-only: end vote early -->
+      <div id="vote-host-end" style="display:none;">
+        <button class="btn btn-red btn-sm" id="btn-end-vote">End Vote Now</button>
+      </div>
+    </div>
+
+    <!-- Results phase -->
+    <div id="vote-phase-results" style="display:none;">
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="font-family:var(--display);font-size:30px;letter-spacing:3px;color:var(--purple);">RESULTS</div>
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-top:4px;" id="result-round-label">Round 1</div>
+      </div>
+
+      <!-- Most-voted highlight -->
+      <div id="result-leader-box" style="text-align:center;margin-bottom:18px;padding:14px;border-radius:4px;background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.3);">
+        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Most Votes</div>
+        <div style="font-family:var(--display);font-size:36px;letter-spacing:3px;color:var(--red);" id="result-leader-name">—</div>
+        <div style="font-size:11px;color:var(--text-dim);" id="result-leader-votes">— votes</div>
+      </div>
+
+      <!-- Bar chart -->
+      <div id="result-bars" style="margin-bottom:18px;"></div>
+
+      <!-- Who voted for whom -->
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Who Voted For Whom</div>
+      <div id="vote-log" style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;"></div>
+
+      <!-- Host: close → resume game -->
+      <div id="result-host-close" style="display:none;">
+        <button class="btn btn-cyan" id="btn-close-vote">Resume Game</button>
+      </div>
+      <div id="result-wait" style="display:none;text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:1px;padding:8px;">
+        Waiting for host to close results…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
      JAVASCRIPT
-===================================================================== -->
+═══════════════════════════════════════ -->
 <script>
-/* ── State ─────────────────────────────────────────────────────────────── */
-const state = {
-  socket: null,
-  nickname: '',
-  roomCode: '',
-  isHost: false,
-  myId: '',
-  players: [],    // [{id, nickname}]
-  speakerIndex: -1,
-  myRole: null,   // 'player' | 'imposter'
-  mySecret: '',
+/* ──────────────────────────────────────────
+   STATE
+─────────────────────────────────────────── */
+const S = {
+  socket:       null,
+  nickname:     '',
+  roomCode:     '',
+  isHost:       false,
+  myId:         '',
+  players:      [],         // [{id, nickname}]
+  hostId:       '',
+  speakerOrder: [],         // array of player IDs (shuffled)
+  speakerStep:  -1,         // current index
+  myRole:       null,
+  myVote:       null,       // targetId after voting
 };
 
-/* ── Utility: show a screen ─────────────────────────────────────────────── */
-function showScreen(id) {
+/* ──────────────────────────────────────────
+   SCREEN HELPERS
+─────────────────────────────────────────── */
+function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
-/* ── Utility: set error text ─────────────────────────────────────────────── */
-function setError(id, msg) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = msg;
+function setErr(id, msg) { const el = document.getElementById(id); if (el) el.textContent = msg || ''; }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function initial(name) { return (name || '?')[0].toUpperCase(); }
+function copyCode() { navigator.clipboard?.writeText(S.roomCode).catch(() => {}); }
 
-/* ── Utility: avatar initials ─────────────────────────────────────────────── */
-function avatarLetter(name) {
-  return (name || '?')[0].toUpperCase();
-}
+/* ──────────────────────────────────────────
+   PLAYER LIST
+─────────────────────────────────────────── */
+function renderPlayers(containerId, players, hostId, speakerStep, speakerOrder) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
 
-/* ── Copy room code ─────────────────────────────────────────────────────── */
-function copyRoomCode() {
-  navigator.clipboard?.writeText(state.roomCode).catch(() => {});
-}
+  // currentSpeakerId from order
+  const currentSpeakerId = (speakerStep >= 0 && speakerOrder && speakerOrder.length)
+    ? speakerOrder[speakerStep] : null;
 
-/* ── Build player list HTML ─────────────────────────────────────────────── */
-function buildPlayerList(containerId, players, hostId, speakerIndex) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = '';
+  players.forEach(p => {
+    const isSpeaker = p.id === currentSpeakerId;
+    const div = document.createElement('div');
+    div.className = 'player-item' + (isSpeaker ? ' is-speaker' : '');
 
-  players.forEach((p, i) => {
-    const item = document.createElement('div');
-    item.className = 'player-item' + (i === speakerIndex ? ' speaker' : '');
+    const tags = [];
+    if (p.id === hostId)     tags.push(`<span class="tag tag-host">HOST</span>`);
+    if (p.id === S.myId)     tags.push(`<span class="tag tag-you">YOU</span>`);
+    if (isSpeaker)           tags.push(`<span class="tag tag-speaking">🎙 SPEAKING</span>`);
 
-    const badges = [];
-    if (p.id === hostId)      badges.push(`<span class="player-badge badge-host">HOST</span>`);
-    if (p.id === state.myId)  badges.push(`<span class="player-badge badge-you">YOU</span>`);
-    if (i === speakerIndex)   badges.push(`<span class="player-badge badge-speaker">🎙 SPEAKING</span>`);
-
-    item.innerHTML = `
-      <div class="player-avatar">${avatarLetter(p.nickname)}</div>
-      <div class="player-name">${escHtml(p.nickname)}</div>
-      ${badges.join('')}
+    div.innerHTML = `
+      <div class="avatar">${initial(p.nickname)}</div>
+      <div class="pname">${esc(p.nickname)}</div>
+      ${tags.join('')}
     `;
-    container.appendChild(item);
+    c.appendChild(div);
   });
 }
 
-/* ── Build role card HTML ─────────────────────────────────────────────── */
-function buildRoleCard(role, secret) {
-  const container = document.getElementById('role-card-container');
+/* ──────────────────────────────────────────
+   SPEAKER QUEUE STRIP
+─────────────────────────────────────────── */
+function renderQueue(order, step) {
+  const strip = document.getElementById('queue-strip');
+  const area  = document.getElementById('queue-area');
+  if (!strip || !order || order.length === 0) { if (area) area.style.display = 'none'; return; }
+
+  area.style.display = 'block';
+  strip.innerHTML = '';
+  order.forEach((pid, i) => {
+    const player = S.players.find(p => p.id === pid);
+    const name   = player ? player.nickname : '?';
+    const chip   = document.createElement('div');
+    chip.className = 'queue-chip' +
+      (i === step ? ' current' : '') +
+      (i < step   ? ' done'    : '');
+    chip.textContent = (i === step ? '▶ ' : '') + name;
+    strip.appendChild(chip);
+  });
+}
+
+/* ──────────────────────────────────────────
+   ROLE CARD
+─────────────────────────────────────────── */
+function renderRoleCard(role, secret) {
+  const c = document.getElementById('role-card');
   if (role === 'player') {
-    container.innerHTML = `
-      <div class="role-card player-card">
-        <div class="role-label" style="color:var(--green);">Your Role</div>
-        <div class="role-name">CREW</div>
-        <div class="role-divider"></div>
-        <div class="role-instruction">Your secret word is</div>
-        <div class="secret-word">${escHtml(secret)}</div>
-        <div style="margin-top:12px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">
-          Do not reveal your word. Find the imposter.
-        </div>
-      </div>
-    `;
+    c.innerHTML = `
+      <div class="role-card crew">
+        <div class="rlabel">Your Role</div>
+        <div class="rname">CREW</div>
+        <div class="rdiv"></div>
+        <div class="rinstruct">Your secret word is</div>
+        <div class="secret-word">${esc(secret)}</div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-dim);letter-spacing:1px;">Don't reveal it. Find the imposter.</div>
+      </div>`;
   } else {
-    container.innerHTML = `
-      <div class="role-card imposter-card">
-        <div class="role-label" style="color:var(--red);">Your Role</div>
-        <div class="role-name">IMPOSTER</div>
-        <div class="role-divider"></div>
-        <div class="role-instruction">Your hint is</div>
-        <div class="secret-hint">"${escHtml(secret)}"</div>
-        <div style="margin-top:12px;font-size:11px;color:rgba(255,59,92,0.7);letter-spacing:1px;">
-          Blend in. Don't get caught.
-        </div>
-      </div>
-    `;
+    c.innerHTML = `
+      <div class="role-card imposter">
+        <div class="rlabel">Your Role</div>
+        <div class="rname">IMPOSTER</div>
+        <div class="rdiv"></div>
+        <div class="rinstruct">Your only clue is</div>
+        <div class="secret-hint">"${esc(secret)}"</div>
+        <div style="margin-top:10px;font-size:11px;color:rgba(255,59,92,.7);letter-spacing:1px;">Blend in. Don't get caught.</div>
+      </div>`;
   }
 }
 
-/* ── Escape HTML ─────────────────────────────────────────────────────────── */
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* ──────────────────────────────────────────
+   VOTING OVERLAY
+─────────────────────────────────────────── */
+function showVoteOverlay(players, hostId) {
+  S.myVote = null;
+
+  // Reset phases
+  document.getElementById('vote-phase-voting').style.display  = 'block';
+  document.getElementById('vote-phase-results').style.display = 'none';
+  document.getElementById('vote-waiting-msg').style.display   = 'none';
+  document.getElementById('vote-host-end').style.display      = S.isHost ? 'block' : 'none';
+  setVoteProgress(0, players.length);
+
+  // Build candidate grid
+  const grid = document.getElementById('vote-grid');
+  grid.innerHTML = '';
+  players.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'vote-card';
+    card.dataset.id = p.id;
+    card.innerHTML = `
+      <div class="vavatar">${initial(p.nickname)}</div>
+      <div class="vname">${esc(p.nickname)}${p.id === S.myId ? ' <span style="font-size:10px;color:var(--text-dim)">(you)</span>' : ''}</div>
+      <div class="vcount" id="vc-${p.id}">—</div>
+    `;
+    card.addEventListener('click', () => submitVote(p.id));
+    grid.appendChild(card);
+  });
+
+  document.getElementById('vote-overlay').classList.remove('hidden');
 }
 
-/* ── Init Socket.io ─────────────────────────────────────────────────────── */
+function setVoteProgress(done, total) {
+  document.getElementById('vote-count-done').textContent  = done;
+  document.getElementById('vote-count-total').textContent = total;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('vote-progress').style.width = pct + '%';
+}
+
+function updateVoteCounts(totals, voters, total) {
+  setVoteProgress(voters, total);
+  // Update count badges on cards (show live counts)
+  Object.entries(totals).forEach(([pid, count]) => {
+    const el = document.getElementById('vc-' + pid);
+    if (el) el.textContent = count > 0 ? count : '—';
+  });
+}
+
+function submitVote(targetId) {
+  if (S.myVote) return; // already voted
+  S.myVote = targetId;
+
+  // Visually lock all cards
+  document.querySelectorAll('.vote-card').forEach(c => {
+    c.classList.add('disabled');
+    if (c.dataset.id === targetId) c.classList.add('selected');
+  });
+
+  document.getElementById('vote-waiting-msg').style.display = 'block';
+
+  S.socket.emit('vote:submit', { targetId });
+}
+
+function showVoteResults({ totals, mostVotedIds, maxVotes, voteLog, players, round }) {
+  document.getElementById('vote-phase-voting').style.display  = 'none';
+  document.getElementById('vote-phase-results').style.display = 'block';
+
+  document.getElementById('result-round-label').textContent = `Vote Round ${round}`;
+
+  // Leader
+  const leaderNames = mostVotedIds
+    .map(id => players.find(p => p.id === id)?.nickname || '?')
+    .join(' & ');
+  document.getElementById('result-leader-name').textContent  = maxVotes > 0 ? leaderNames : 'No votes cast';
+  document.getElementById('result-leader-votes').textContent = maxVotes > 0 ? `${maxVotes} vote${maxVotes !== 1 ? 's' : ''}` : '';
+
+  // Bar chart
+  const barsEl = document.getElementById('result-bars');
+  barsEl.innerHTML = '';
+  const maxV = Math.max(1, ...Object.values(totals));
+  players.forEach(p => {
+    const v       = totals[p.id] || 0;
+    const pct     = Math.max(0, Math.round((v / maxV) * 100));
+    const isLead  = mostVotedIds.includes(p.id) && maxVotes > 0;
+    const row = document.createElement('div');
+    row.className = 'result-bar-row';
+    row.innerHTML = `
+      <div class="result-bar-name" title="${esc(p.nickname)}">${esc(p.nickname)}</div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill ${v === 0 ? 'zero' : isLead ? 'leader' : 'normal'}"
+             style="width:0%"
+             data-target="${v === 0 ? 0 : pct}">
+          ${v > 0 ? v : ''}
+        </div>
+      </div>
+    `;
+    barsEl.appendChild(row);
+  });
+
+  // Animate bars after a tiny delay
+  setTimeout(() => {
+    document.querySelectorAll('.result-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.target + '%';
+    });
+  }, 80);
+
+  // Vote log
+  const logEl = document.getElementById('vote-log');
+  logEl.innerHTML = '';
+  if (voteLog.length === 0) {
+    logEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:8px;">Nobody submitted a vote.</div>';
+  } else {
+    voteLog.forEach(entry => {
+      const isMe     = entry.voterId === S.myId;
+      const votedOnMe = entry.targetId === S.myId;
+      const div = document.createElement('div');
+      div.className = 'vote-log-item' + (votedOnMe ? ' voted-on-me' : '');
+      div.innerHTML = `
+        <span class="vl-voter">${esc(entry.voterName)}${isMe ? ' <span style="color:var(--text-dim);font-size:10px">(you)</span>' : ''}</span>
+        <span class="vl-arrow">→</span>
+        <span class="vl-target">${esc(entry.targetName)}</span>
+        ${votedOnMe ? '<span style="font-size:10px;color:var(--red);margin-left:auto;">← you</span>' : ''}
+      `;
+      logEl.appendChild(div);
+    });
+  }
+
+  // Host / wait controls
+  document.getElementById('result-host-close').style.display = S.isHost ? 'block' : 'none';
+  document.getElementById('result-wait').style.display       = S.isHost ? 'none' : 'block';
+}
+
+/* ──────────────────────────────────────────
+   SOCKET INIT
+─────────────────────────────────────────── */
 function initSocket() {
-  if (state.socket) return;
+  if (S.socket) return;
+  S.socket = io();
+  const socket = S.socket;
 
-  state.socket = io();
-  const socket = state.socket;
+  socket.on('connect', () => { S.myId = socket.id; });
 
-  // Store our socket id once connected
-  socket.on('connect', () => {
-    state.myId = socket.id;
-  });
-
-  /* ── Lobby update ─────────────────────────────────────────────── */
+  // ── Lobby update
   socket.on('lobby:update', ({ players, hostId }) => {
-    state.players = players;
-    state.isHost = (hostId === state.myId);
-
-    // Update lobby screen
-    buildPlayerList('lobby-players', players, hostId, -1);
-    document.getElementById('host-start-area').style.display = state.isHost ? 'block' : 'none';
+    S.players = players;
+    S.hostId  = hostId;
+    S.isHost  = hostId === S.myId;
+    renderPlayers('lobby-players', players, hostId, -1, []);
+    document.getElementById('host-start-wrap').style.display = S.isHost ? 'block' : 'none';
   });
 
-  /* ── Game started — receive role assignment ───────────────────── */
-  socket.on('game:started', ({ role, secret, players, hostId, speakerIndex }) => {
-    state.myRole = role;
-    state.mySecret = secret;
-    state.players = players;
-    state.isHost = (hostId === state.myId);
-    state.speakerIndex = speakerIndex;
+  // ── Game started
+  socket.on('game:started', ({ role, secret, players, hostId, speakerOrder, speakerStep }) => {
+    S.players      = players;
+    S.hostId       = hostId;
+    S.isHost       = hostId === S.myId;
+    S.myRole       = role;
+    S.speakerOrder = speakerOrder;
+    S.speakerStep  = speakerStep;
+    S.myVote       = null;
 
-    document.getElementById('game-code').textContent = state.roomCode;
-    buildRoleCard(role, secret);
-    buildPlayerList('game-players', players, hostId, speakerIndex);
+    document.getElementById('game-code').textContent = S.roomCode;
+    renderRoleCard(role, secret);
+    renderPlayers('game-players', players, hostId, speakerStep, speakerOrder);
+    renderQueue(speakerOrder, speakerStep);
 
-    // Show host controls
-    const hc = document.getElementById('host-game-controls');
-    hc.style.display = state.isHost ? 'flex' : 'none';
-
-    // Hide speaker area initially
     document.getElementById('speaker-area').style.display = 'none';
+    const hgw = document.getElementById('host-game-wrap');
+    hgw.style.display = S.isHost ? 'flex' : 'none';
+    hgw.style.flexDirection = 'column';
 
-    showScreen('screen-game');
+    show('screen-game');
   });
 
-  /* ── Speaker update ───────────────────────────────────────────── */
-  socket.on('game:speaker', ({ speakerIndex, speakerName, speakerId }) => {
-    state.speakerIndex = speakerIndex;
-    buildPlayerList('game-players', state.players,
-      state.isHost ? state.myId : (state.players.find(p => p.id !== state.myId)?.id),
-      speakerIndex
-    );
+  // ── Speaker changed
+  socket.on('game:speaker', ({ speakerId, speakerName, speakerStep, speakerOrder }) => {
+    S.speakerOrder = speakerOrder;
+    S.speakerStep  = speakerStep;
 
-    const sa = document.getElementById('speaker-area');
-    sa.style.display = 'block';
-    document.getElementById('speaker-name-display').textContent = speakerName;
+    document.getElementById('speaker-area').style.display = 'block';
+    document.getElementById('speaker-name').textContent   = speakerName;
+
+    renderPlayers('game-players', S.players, S.hostId, speakerStep, speakerOrder);
+    renderQueue(speakerOrder, speakerStep);
   });
 
-  /* ── Reveal ───────────────────────────────────────────────────── */
+  // ── Vote started
+  socket.on('vote:started', ({ players, hostId }) => {
+    S.players = players;
+    showVoteOverlay(players, hostId);
+  });
+
+  // ── Live vote count update
+  socket.on('vote:update', ({ totals, voters, total }) => {
+    updateVoteCounts(totals, voters, total);
+  });
+
+  // ── Vote results
+  socket.on('vote:results', (data) => {
+    showVoteResults(data);
+  });
+
+  // ── Vote closed → hide overlay, resume game
+  socket.on('vote:closed', () => {
+    document.getElementById('vote-overlay').classList.add('hidden');
+    S.myVote = null;
+  });
+
+  // ── Game reveal (imposter exposed)
   socket.on('game:reveal', ({ imposterName, imposterId, word, hint }) => {
-    document.getElementById('reveal-imposter-name').textContent = imposterName;
+    document.getElementById('vote-overlay').classList.add('hidden');
+    document.getElementById('reveal-name').textContent = imposterName;
     document.getElementById('reveal-word').textContent = word;
     document.getElementById('reveal-hint').textContent = hint;
-
-    const hrc = document.getElementById('host-reveal-controls');
-    const rw  = document.getElementById('reveal-waiting');
-    if (state.isHost) {
-      hrc.style.display = 'block';
-      rw.style.display  = 'none';
-    } else {
-      hrc.style.display = 'none';
-      rw.style.display  = 'block';
-    }
-
-    showScreen('screen-reveal');
+    document.getElementById('reveal-host-wrap').style.display = S.isHost ? 'block' : 'none';
+    document.getElementById('reveal-wait').style.display      = S.isHost ? 'none'  : 'block';
+    show('screen-reveal');
   });
 
-  /* ── Back to lobby ────────────────────────────────────────────── */
+  // ── Back to lobby
   socket.on('game:backToLobby', () => {
-    state.myRole = null;
-    state.mySecret = '';
-    state.speakerIndex = -1;
-    document.getElementById('lobby-code').textContent = state.roomCode;
-    showScreen('screen-lobby');
+    document.getElementById('vote-overlay').classList.add('hidden');
+    S.myRole       = null;
+    S.myVote       = null;
+    S.speakerOrder = [];
+    S.speakerStep  = -1;
+    document.getElementById('lobby-code').textContent = S.roomCode;
+    show('screen-lobby');
   });
 
-  /* ── Server error messages ────────────────────────────────────── */
-  socket.on('error:msg', (msg) => {
-    setError('start-error', msg);
-  });
+  socket.on('error:msg', msg => setErr('err-start', msg));
 }
 
-/* ── Button: Create Room ─────────────────────────────────────────────── */
-document.getElementById('btn-create').addEventListener('click', () => {
-  const nickname = document.getElementById('create-nickname').value.trim();
-  if (!nickname) { setError('create-error', 'Please enter a nickname.'); return; }
-  setError('create-error', '');
+/* ──────────────────────────────────────────
+   BUTTON HANDLERS
+─────────────────────────────────────────── */
 
+// Create Room
+document.getElementById('btn-create').addEventListener('click', () => {
+  const nick = document.getElementById('create-nick').value.trim();
+  if (!nick) { setErr('err-create', 'Please enter a nickname.'); return; }
+  setErr('err-create', '');
   const btn = document.getElementById('btn-create');
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Creating...`;
+  btn.innerHTML = `<span class="spin"></span> Creating…`;
 
   initSocket();
-
-  state.nickname = nickname;
-  state.socket.emit('room:create', { nickname }, ({ success, roomCode, error }) => {
+  S.nickname = nick;
+  S.socket.emit('room:create', { nickname: nick }, ({ success, roomCode, error }) => {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Create Room`;
-    if (!success) { setError('create-error', error); return; }
-    state.roomCode = roomCode;
-    state.isHost = true;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Create Room`;
+    if (!success) { setErr('err-create', error); return; }
+    S.roomCode = roomCode;
+    S.isHost   = true;
     document.getElementById('lobby-code').textContent = roomCode;
-    showScreen('screen-lobby');
+    show('screen-lobby');
   });
 });
 
-/* ── Button: Join Room ───────────────────────────────────────────────── */
+// Join Room
 document.getElementById('btn-join').addEventListener('click', () => {
-  const nickname = document.getElementById('join-nickname').value.trim();
-  const roomCode = document.getElementById('join-code').value.trim().toUpperCase();
-  if (!nickname) { setError('join-error', 'Please enter a nickname.'); return; }
-  if (roomCode.length !== 4) { setError('join-error', 'Room code must be 4 letters.'); return; }
-  setError('join-error', '');
-
+  const nick = document.getElementById('join-nick').value.trim();
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!nick)           { setErr('err-join', 'Please enter a nickname.'); return; }
+  if (code.length < 4) { setErr('err-join', 'Room code must be 4 letters.'); return; }
+  setErr('err-join', '');
   const btn = document.getElementById('btn-join');
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Joining...`;
+  btn.innerHTML = `<span class="spin"></span> Joining…`;
 
   initSocket();
-
-  state.nickname = nickname;
-  state.socket.emit('room:join', { nickname, roomCode }, ({ success, error }) => {
+  S.nickname = nick;
+  S.socket.emit('room:join', { nickname: nick, roomCode: code }, ({ success, error }) => {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Join Room`;
-    if (!success) { setError('join-error', error); return; }
-    state.roomCode = roomCode;
-    state.isHost = false;
-    document.getElementById('lobby-code').textContent = roomCode;
-    showScreen('screen-lobby');
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Join Room`;
+    if (!success) { setErr('err-join', error); return; }
+    S.roomCode = code;
+    S.isHost   = false;
+    document.getElementById('lobby-code').textContent = code;
+    show('screen-lobby');
   });
 });
 
-/* ── Enter key on join fields ─────────────────────────────────────────── */
-['join-nickname','join-code'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('btn-join').click();
-  });
+// Enter key on landing inputs
+['join-nick','join-code'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-join').click(); });
 });
-document.getElementById('create-nickname').addEventListener('keydown', e => {
+document.getElementById('create-nick').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-create').click();
 });
 
-/* ── Button: Start Game ──────────────────────────────────────────────── */
+// Start Game
 document.getElementById('btn-start').addEventListener('click', () => {
-  setError('start-error', '');
-  state.socket.emit('game:start');
+  setErr('err-start', '');
+  S.socket.emit('game:start');
 });
 
-/* ── Button: Next Speaker ────────────────────────────────────────────── */
+// Next Speaker
 document.getElementById('btn-next-speaker').addEventListener('click', () => {
-  state.socket.emit('game:nextSpeaker');
+  S.socket.emit('game:nextSpeaker');
 });
 
-/* ── Button: Reveal Imposter ─────────────────────────────────────────── */
+// Start Vote
+document.getElementById('btn-start-vote').addEventListener('click', () => {
+  S.socket.emit('vote:start');
+});
+
+// End Vote Early
+document.getElementById('btn-end-vote').addEventListener('click', () => {
+  S.socket.emit('vote:end');
+});
+
+// Close vote results → resume game
+document.getElementById('btn-close-vote').addEventListener('click', () => {
+  S.socket.emit('vote:close');
+});
+
+// Reveal Imposter
 document.getElementById('btn-reveal').addEventListener('click', () => {
-  if (confirm('Are you sure you want to reveal the Imposter? This will end the round.')) {
-    state.socket.emit('game:reveal');
+  if (confirm('Reveal the Imposter now? This ends the round.')) {
+    S.socket.emit('game:reveal');
   }
 });
 
-/* ── Button: Play Again ──────────────────────────────────────────────── */
+// Play Again
 document.getElementById('btn-play-again').addEventListener('click', () => {
-  state.socket.emit('game:playAgain');
+  S.socket.emit('game:playAgain');
 });
 </script>
 </body>
